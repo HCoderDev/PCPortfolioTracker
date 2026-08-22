@@ -1,0 +1,94 @@
+{% extends "base.html" %}
+
+{% block title %}Reminders — iPortfolioTracker{% endblock %}
+{% block header_title %}Asset Reminders{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+
+    <!-- Top Action Toolbar -->
+    <div class="flex items-center justify-between bg-slate-900/80 border border-slate-800 rounded-2xl p-4 glass-panel">
+        <div class="flex items-center space-x-3">
+            <a href="{{ url_for('reminders.index', status='pending') }}" class="px-3 py-1.5 rounded-xl text-xs font-bold {% if status_filter == 'pending' %}bg-indigo-600 text-white{% else %}bg-slate-800 text-slate-400{% endif %}">Pending</a>
+            <a href="{{ url_for('reminders.index', status='completed') }}" class="px-3 py-1.5 rounded-xl text-xs font-bold {% if status_filter == 'completed' %}bg-indigo-600 text-white{% else %}bg-slate-800 text-slate-400{% endif %}">Completed</a>
+            <a href="{{ url_for('reminders.index', status='all') }}" class="px-3 py-1.5 rounded-xl text-xs font-bold {% if status_filter == 'all' %}bg-indigo-600 text-white{% else %}bg-slate-800 text-slate-400{% endif %}">All</a>
+        </div>
+        <button onclick="document.getElementById('addReminderModal').classList.remove('hidden')" class="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-xl shadow-lg shadow-indigo-600/30 transition">
+            <i class="fa-solid fa-plus mr-1"></i> Add Reminder
+        </button>
+    </div>
+
+    <!-- Reminders List -->
+    <div class="space-y-3">
+        {% for r in reminders %}
+        <div class="bg-slate-900/80 border border-slate-800 rounded-2xl p-4 glass-panel flex items-center justify-between {% if r.is_completed %}opacity-60{% endif %}">
+            <div class="flex items-center space-x-4">
+                <form method="POST" action="{{ url_for('reminders.toggle_reminder', reminder_id=r.id) }}">
+                    <input type="hidden" name="is_completed" value="{% if r.is_completed %}0{% else %}1{% endif %}">
+                    <button type="submit" class="w-6 h-6 rounded-lg border border-slate-700 flex items-center justify-center text-xs transition {% if r.is_completed %}bg-emerald-500 text-slate-950 border-emerald-400{% else %}hover:border-indigo-400 text-transparent{% endif %}">
+                        <i class="fa-solid fa-check"></i>
+                    </button>
+                </form>
+                <div>
+                    <h4 class="font-bold text-sm text-white {% if r.is_completed %}line-through text-slate-400{% endif %}">{{ r.title }}</h4>
+                    <p class="text-xs text-slate-400 mt-0.5">Asset: {{ r.asset_name or 'General' }} &middot; Due: <span class="font-mono text-indigo-300 font-semibold">{{ r.event_date | date_fmt }}</span></p>
+                    {% if r.notes %}
+                    <p class="text-xs text-slate-500 mt-1 italic">{{ r.notes }}</p>
+                    {% endif %}
+                </div>
+            </div>
+
+            <form method="POST" action="{{ url_for('reminders.delete_reminder', reminder_id=r.id) }}" onsubmit="return confirm('Delete reminder?')">
+                <button type="submit" class="text-slate-500 hover:text-rose-400 text-xs">
+                    <i class="fa-solid fa-trash"></i>
+                </button>
+            </form>
+        </div>
+        {% else %}
+        <div class="bg-slate-900/80 border border-slate-800 rounded-2xl p-8 text-center text-slate-500 text-xs glass-panel">
+            No {{ status_filter }} reminders found.
+        </div>
+        {% endfor %}
+    </div>
+
+</div>
+
+<!-- Add Reminder Modal -->
+<div id="addReminderModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
+    <div class="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-md p-6 shadow-2xl space-y-4">
+        <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+            <h3 class="font-bold text-base text-white">Add Reminder</h3>
+            <button onclick="document.getElementById('addReminderModal').classList.add('hidden')" class="text-slate-400 hover:text-white">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+        </div>
+        <form method="POST" action="{{ url_for('reminders.add_reminder') }}" class="space-y-3 text-xs">
+            <div>
+                <label class="block font-semibold text-slate-300 mb-1">Title</label>
+                <input type="text" name="title" required placeholder="e.g. FD Maturity Payout Check" class="w-full bg-slate-950 border border-slate-800 text-white rounded-xl p-2.5">
+            </div>
+            <div>
+                <label class="block font-semibold text-slate-300 mb-1">Asset (Optional)</label>
+                <select name="asset_id" class="w-full bg-slate-950 border border-slate-800 text-white rounded-xl p-2.5">
+                    <option value="">General Portfolio Reminder</option>
+                    {% for a in all_assets %}
+                    <option value="{{ a.id }}">{{ a.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div>
+                <label class="block font-semibold text-slate-300 mb-1">Event / Due Date</label>
+                <input type="date" name="event_date" required class="w-full bg-slate-950 border border-slate-800 text-white rounded-xl p-2.5">
+            </div>
+            <div>
+                <label class="block font-semibold text-slate-300 mb-1">Notes</label>
+                <input type="text" name="notes" placeholder="Details..." class="w-full bg-slate-950 border border-slate-800 text-white rounded-xl p-2.5">
+            </div>
+            <div class="pt-3 border-t border-slate-800 flex justify-end space-x-2">
+                <button type="button" onclick="document.getElementById('addReminderModal').classList.add('hidden')" class="px-4 py-2 bg-slate-800 text-slate-300 rounded-xl font-semibold hover:bg-slate-700">Cancel</button>
+                <button type="submit" class="px-4 py-2 bg-indigo-600 text-white rounded-xl font-semibold hover:bg-indigo-500 shadow-md shadow-indigo-600/30">Save Reminder</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

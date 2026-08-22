@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+
+{% block title %}DCF Valuation Model — {{ asset.name }}{% endblock %}
+{% block header_title %}DCF Valuation Model: {{ asset.name }}{% endblock %}
+
+{% block content %}
+<div class="space-y-6 max-w-3xl">
+
+    <div class="bg-slate-900/80 border border-slate-800 rounded-2xl p-6 glass-panel space-y-4">
+        <h3 class="font-bold text-base text-white">Discounted Cash Flow Parameters</h3>
+
+        <form method="POST" action="{{ url_for('analysis.stock_dcf_analysis', asset_id=asset.id) }}" class="space-y-4 text-xs">
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label class="block font-semibold text-slate-300 mb-1">Current Market Price (CMP)</label>
+                    <input type="number" step="any" name="cmp" value="{{ analysis.cmp if analysis else asset.current_price }}" required class="w-full bg-slate-950 border border-slate-800 text-white rounded-xl p-2.5 font-mono">
+                </div>
+                <div>
+                    <label class="block font-semibold text-slate-300 mb-1">Starting Free Cash Flow (FCF)</label>
+                    <input type="number" step="any" name="starting_fcf" value="{{ analysis.starting_fcf if analysis else 1000000.0 }}" required class="w-full bg-slate-950 border border-slate-800 text-white rounded-xl p-2.5 font-mono">
+                </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label class="block font-semibold text-slate-300 mb-1">Expected 10-Yr FCF Growth Rate (%)</label>
+                    <input type="number" step="any" name="growth_rate" value="{{ analysis.growth_rate if analysis else 12.0 }}" required class="w-full bg-slate-950 border border-slate-800 text-white rounded-xl p-2.5 font-mono">
+                </div>
+                <div>
+                    <label class="block font-semibold text-slate-300 mb-1">Discount Rate / WACC (%)</label>
+                    <input type="number" step="any" name="discount_rate" value="{{ analysis.discount_rate if analysis else 10.0 }}" required class="w-full bg-slate-950 border border-slate-800 text-white rounded-xl p-2.5 font-mono">
+                </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label class="block font-semibold text-slate-300 mb-1">Terminal Growth Rate (%)</label>
+                    <input type="number" step="any" name="terminal_growth" value="{{ analysis.terminal_growth if analysis else 3.0 }}" required class="w-full bg-slate-950 border border-slate-800 text-white rounded-xl p-2.5 font-mono">
+                </div>
+                <div>
+                    <label class="block font-semibold text-slate-300 mb-1">Total Outstanding Shares</label>
+                    <input type="number" step="any" name="shares" value="{{ analysis.shares if analysis else 100000.0 }}" required class="w-full bg-slate-950 border border-slate-800 text-white rounded-xl p-2.5 font-mono">
+                </div>
+            </div>
+
+            <div class="pt-3 border-t border-slate-800 flex justify-end space-x-2">
+                <a href="{{ url_for('assets.asset_detail', asset_id=asset.id) }}" class="px-4 py-2 bg-slate-800 text-slate-300 rounded-xl font-semibold hover:bg-slate-700">Cancel</a>
+                <button type="submit" class="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl shadow-lg shadow-indigo-600/30">Calculate DCF Intrinsic Value</button>
+            </div>
+        </form>
+    </div>
+
+</div>
+{% endblock %}

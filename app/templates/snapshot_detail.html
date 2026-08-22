@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+
+{% block title %}Snapshot {{ snapshot.date | date_fmt }} — iPortfolioTracker{% endblock %}
+{% block header_title %}Snapshot {{ snapshot.date | date_fmt }}{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+
+    <div class="bg-gradient-to-r from-slate-900 via-indigo-950/60 to-slate-900 border border-indigo-500/30 rounded-2xl p-6 shadow-xl flex items-center justify-between">
+        <div>
+            <p class="text-xs font-bold uppercase tracking-wider text-indigo-300">Historical Snapshot Date: {{ snapshot.date | date_fmt }}</p>
+            <h2 class="text-3xl font-black text-white font-mono mt-1">{{ snapshot.total_value_inr | currency('INR') }}</h2>
+            <p class="text-xs text-slate-400 mt-1">Invested Amount: {{ snapshot.total_invested_inr | currency('INR') }} &middot; Note: {{ snapshot.note or 'N/A' }}</p>
+        </div>
+    </div>
+
+    <!-- Category & Asset Breakdown in Snapshot -->
+    <div class="space-y-4">
+        {% for cat in snapshot.categories %}
+        <div class="bg-slate-900/80 border border-slate-800 rounded-2xl p-5 glass-panel space-y-3">
+            <div class="flex items-center justify-between">
+                <h4 class="font-bold text-base text-white">{{ cat.category_name }}</h4>
+                <p class="font-mono font-bold text-indigo-300 text-sm">{{ cat.current_value_inr | currency('INR') }}</p>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full text-left text-xs border-collapse">
+                    <thead>
+                        <tr class="bg-slate-950/60 border-b border-slate-800 font-bold uppercase tracking-wider text-slate-400">
+                            <th class="py-2.5 px-3">Asset</th>
+                            <th class="py-2.5 px-3 text-right">Units</th>
+                            <th class="py-2.5 px-3 text-right">Price</th>
+                            <th class="py-2.5 px-3 text-right">Value (INR)</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-800/60 font-mono">
+                        {% for a in cat.assets %}
+                        <tr class="hover:bg-slate-800/40">
+                            <td class="py-2.5 px-3 font-sans text-slate-200">{{ a.asset_name }}</td>
+                            <td class="py-2.5 px-3 text-right text-slate-300">{{ "%.4f"|format(a.units) }}</td>
+                            <td class="py-2.5 px-3 text-right text-slate-300">{{ a.current_price | currency(cat.currency_code) }}</td>
+                            <td class="py-2.5 px-3 text-right font-bold text-white">{{ a.current_value_inr | currency('INR') }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+</div>
+{% endblock %}

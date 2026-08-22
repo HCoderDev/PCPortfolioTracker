@@ -1,0 +1,184 @@
+{% extends "base.html" %}
+
+{% block title %}Time to FI — iPortfolioTracker{% endblock %}
+{% block header_title %}Financial Independence (FI) Freedom Projection{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+
+    <!-- FI SIMULATION INPUTS CARD -->
+    <div class="apple-card rounded-3xl p-6 space-y-4">
+        <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+            <h3 class="font-bold text-base text-white flex items-center space-x-2">
+                <i class="fa-solid fa-fire text-orange-400"></i>
+                <span>Financial Independence (FI) Goal &amp; Assumptions</span>
+            </h3>
+            <span class="text-xs text-slate-400">Freedom Projection &amp; Calculator</span>
+        </div>
+
+        <form method="POST" action="{{ url_for('fi_tracker.index') }}" class="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
+            <div>
+                <label class="block font-semibold text-slate-300 mb-1">Target FI Goal (INR)</label>
+                <input type="number" step="any" name="target_goal" value="{{ target_goal }}" required class="w-full bg-slate-950 border border-slate-800 text-white font-mono rounded-xl p-2.5">
+            </div>
+            <div>
+                <label class="block font-semibold text-slate-300 mb-1">Monthly SIP Contribution (INR)</label>
+                <input type="number" step="any" name="monthly_sip" value="{{ monthly_sip }}" required class="w-full bg-slate-950 border border-slate-800 text-white font-mono rounded-xl p-2.5">
+            </div>
+            <div>
+                <label class="block font-semibold text-slate-300 mb-1">Expected Return Rate (% p.a.)</label>
+                <input type="number" step="any" name="return_rate" value="{{ return_rate }}" required class="w-full bg-slate-950 border border-slate-800 text-white font-mono rounded-xl p-2.5">
+            </div>
+            <div>
+                <label class="block font-semibold text-slate-300 mb-1">Expected Inflation Rate (% p.a.)</label>
+                <input type="number" step="any" name="inflation_rate" value="{{ inflation_rate }}" required class="w-full bg-slate-950 border border-slate-800 text-white font-mono rounded-xl p-2.5">
+            </div>
+            <div>
+                <label class="block font-semibold text-slate-300 mb-1">Safe Withdrawal Rate (SWR %)</label>
+                <input type="number" step="any" name="swr" value="{{ swr }}" required class="w-full bg-slate-950 border border-slate-800 text-white font-mono rounded-xl p-2.5">
+            </div>
+            <div>
+                <label class="block font-semibold text-slate-300 mb-1">Date of Birth</label>
+                <input type="date" name="birth_date" value="{{ birth_date.strftime('%Y-%m-%d') }}" class="w-full bg-slate-950 border border-slate-800 text-white font-mono rounded-xl p-2.5">
+            </div>
+            <div class="md:col-span-3 flex justify-end">
+                <button type="submit" class="px-6 py-3 bg-gradient-to-r from-orange-600 to-indigo-600 hover:from-orange-500 hover:to-indigo-500 text-white font-bold rounded-xl shadow-lg shadow-orange-600/30 transition flex items-center space-x-2">
+                    <i class="fa-solid fa-play text-xs"></i>
+                    <span>Run Freedom Simulation</span>
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <!-- GOAL PROGRESS CARD -->
+    <div class="apple-card rounded-3xl p-6 space-y-4">
+        <div class="flex items-center justify-between text-xs font-bold">
+            <span class="text-white text-base">FI Goal Progress</span>
+            <span class="text-indigo-400 font-mono text-base">{{ "%.1f"|format(fi_result.progress_percentage) }}% Achieved</span>
+        </div>
+
+        <!-- Animated Progress Bar -->
+        <div class="w-full h-3.5 bg-slate-950 rounded-full overflow-hidden border border-slate-800 relative">
+            <div class="h-full bg-gradient-to-r from-indigo-500 via-purple-500 to-emerald-400 rounded-full transition-all duration-700" style="width: {{ [0, [100, fi_result.progress_percentage]|min]|max }}%;"></div>
+        </div>
+
+        <div class="flex flex-col sm:flex-row items-center justify-between text-xs font-mono text-slate-400 pt-1">
+            <span>Current Net Worth: <strong class="text-emerald-400">₹{{ "%.2f"|format(fi_result.current_net_worth) }}</strong></span>
+            <span>Target Goal: <strong class="text-white">₹{{ "%.2f"|format(fi_result.target_goal) }}</strong></span>
+            {% set remaining = fi_result.target_goal - fi_result.current_net_worth %}
+            <span>Remaining: <strong class="text-indigo-300">₹{{ "%.2f"|format(remaining if remaining > 0 else 0) }}</strong></span>
+        </div>
+    </div>
+
+    <!-- PRIMARY TIME TO FI HIGHLIGHT GRID -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div class="apple-card rounded-3xl p-6 flex items-center space-x-4">
+            <div class="w-12 h-12 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400 text-xl shrink-0">
+                <i class="fa-solid fa-hourglass-half"></i>
+            </div>
+            <div>
+                <p class="text-xs font-bold uppercase tracking-wider text-slate-400">Time to FI Freedom</p>
+                <p class="text-2xl font-black text-white font-mono mt-0.5">
+                    {% if fi_result.months_needed == 0 %}
+                    ACHIEVED! 🎉
+                    {% else %}
+                    {{ fi_result.months_needed // 12 }} yrs {{ fi_result.months_needed % 12 }} mos
+                    {% endif %}
+                </p>
+            </div>
+        </div>
+
+        <div class="apple-card rounded-3xl p-6 flex items-center space-x-4">
+            <div class="w-12 h-12 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 text-xl shrink-0">
+                <i class="fa-solid fa-calendar-check"></i>
+            </div>
+            <div>
+                <p class="text-xs font-bold uppercase tracking-wider text-slate-400">Target Freedom Date</p>
+                <p class="text-2xl font-black text-emerald-400 font-mono mt-0.5">
+                    {{ fi_result.target_date.strftime('%b %Y') if fi_result.target_date else 'Achieved' }}
+                </p>
+            </div>
+        </div>
+
+        <div class="apple-card rounded-3xl p-6 flex items-center space-x-4">
+            <div class="w-12 h-12 rounded-2xl bg-orange-500/10 border border-orange-500/20 flex items-center justify-center text-orange-400 text-xl shrink-0">
+                <i class="fa-solid fa-user-clock"></i>
+            </div>
+            <div>
+                <p class="text-xs font-bold uppercase tracking-wider text-slate-400">Age at FI</p>
+                <p class="text-2xl font-black text-orange-400 font-mono mt-0.5">
+                    {{ "%.1f"|format(fi_result.age_at_fi) }} Yrs
+                </p>
+                <p class="text-[11px] text-slate-400">Current Age: {{ fi_result.current_age }} yrs</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- 4 KEY STATS TILES -->
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div class="apple-card rounded-2xl p-4 space-y-1">
+            <div class="flex items-center space-x-2 text-slate-400 text-xs font-bold">
+                <i class="fa-solid fa-arrow-trend-up text-indigo-400"></i>
+                <span>Monthly SIP</span>
+            </div>
+            <p class="text-lg font-bold text-white font-mono">₹{{ "%.2f"|format(fi_result.monthly_sip) }}</p>
+            <p class="text-[10px] text-slate-400">Current Contribution</p>
+        </div>
+
+        <div class="apple-card rounded-2xl p-4 space-y-1">
+            <div class="flex items-center space-x-2 text-slate-400 text-xs font-bold">
+                <i class="fa-solid fa-percent text-emerald-400"></i>
+                <span>Assumed Return</span>
+            </div>
+            <p class="text-lg font-bold text-emerald-400 font-mono">{{ "%.1f"|format(fi_result.return_rate) }}% p.a.</p>
+            <p class="text-[10px] text-slate-400">Net CAGR Growth</p>
+        </div>
+
+        <div class="apple-card rounded-2xl p-4 space-y-1">
+            <div class="flex items-center space-x-2 text-slate-400 text-xs font-bold">
+                <i class="fa-solid fa-sack-dollar text-indigo-400"></i>
+                <span>Monthly Passive Income</span>
+            </div>
+            <p class="text-lg font-bold text-indigo-300 font-mono">₹{{ "%.2f"|format(fi_result.monthly_passive_income_at_fi) }}</p>
+            <p class="text-[10px] text-slate-400">At {{ fi_result.safe_withdrawal_rate }}% SWR</p>
+        </div>
+
+        <div class="apple-card rounded-2xl p-4 space-y-1">
+            <div class="flex items-center space-x-2 text-slate-400 text-xs font-bold">
+                <i class="fa-solid fa-vault text-orange-400"></i>
+                <span>Annual Passive Income</span>
+            </div>
+            <p class="text-lg font-bold text-orange-400 font-mono">₹{{ "%.2f"|format(fi_result.annual_passive_income_at_fi) }}</p>
+            <p class="text-[10px] text-slate-400">At {{ fi_result.safe_withdrawal_rate }}% SWR</p>
+        </div>
+    </div>
+
+    <!-- FI MILESTONE ROADMAP -->
+    <div class="apple-card rounded-3xl p-6 space-y-4">
+        <h3 class="font-bold text-base text-white border-b border-slate-800 pb-3 flex items-center space-x-2">
+            <i class="fa-solid fa-flag-checkered text-indigo-400"></i>
+            <span>Milestone Freedom Roadmap</span>
+        </h3>
+
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+            {% for m in fi_result.milestones %}
+            <div class="p-4 rounded-2xl border {% if m.is_achieved %}bg-emerald-950/40 border-emerald-500/40{% else %}bg-slate-950/60 border-slate-800{% endif %} space-y-2">
+                <div class="flex items-center justify-between">
+                    <span class="text-xs font-bold text-white">{{ m.label }}</span>
+                    {% if m.is_achieved %}
+                    <span class="px-2.5 py-0.5 bg-emerald-500 text-slate-950 font-extrabold text-[10px] rounded-full uppercase">Achieved 🎉</span>
+                    {% endif %}
+                </div>
+                <p class="text-lg font-extrabold text-indigo-300 font-mono">₹{{ "%.2f"|format(m.target_amount) }}</p>
+                <div class="text-xs text-slate-400 font-mono space-y-0.5 pt-1 border-t border-slate-800/60">
+                    <p>Horizon: {{ m.months_needed // 12 }}y {{ m.months_needed % 12 }}m</p>
+                    <p>Target Date: {{ m.target_date.strftime('%b %Y') if m.target_date else 'Achieved' }}</p>
+                    <p>Age: {{ "%.1f"|format(m.age_at_milestone) }} yrs</p>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+</div>
+{% endblock %}

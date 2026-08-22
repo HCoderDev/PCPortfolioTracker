@@ -1,0 +1,740 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Portfolio Tracker{% endblock %}</title>
+    <link rel="icon" type="image/png" href="{{ url_for('static', filename='app_icon.png') }}">
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Chart.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- FontAwesome CDN -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <!-- Google Fonts Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+
+    <script>
+        // Early Theme Initialization from LocalStorage
+        (function() {
+            const savedTheme = localStorage.getItem('theme');
+            if (savedTheme === 'light') {
+                document.documentElement.classList.remove('dark');
+                document.documentElement.classList.add('light');
+            } else {
+                document.documentElement.classList.remove('light');
+                document.documentElement.classList.add('dark');
+            }
+        })();
+
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['-apple-system', 'BlinkMacSystemFont', '"SF Pro Display"', '"SF Pro Text"', 'Inter', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'Menlo', 'monospace']
+                    },
+                    colors: {
+                        brand: {
+                            50: '#eef2ff',
+                            100: '#e0e7ff',
+                            500: '#6366f1',
+                            600: '#4f46e5',
+                            700: '#4338ca',
+                            900: '#312e81'
+                        },
+                        appleDarkBg: '#090d16',
+                        appleDarkSurface: '#111827',
+                        appleDarkSubtle: '#1f2937'
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        /* --- HIDE SIDE SCROLLBARS GLOBALLY --- */
+        ::-webkit-scrollbar {
+            width: 0px;
+            height: 0px;
+            display: none;
+            background: transparent;
+        }
+        * {
+            scrollbar-width: none !important;
+            -ms-overflow-style: none !important;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Inter", sans-serif;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+        .apple-card {
+            background: rgba(17, 24, 39, 0.65);
+            backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+        }
+        .apple-subtle-border {
+            border-color: rgba(255, 255, 255, 0.07);
+        }
+
+        /* --- COMPREHENSIVE APPLE HIG LIGHT MODE COLOR OVERRIDES --- */
+        html.light body {
+            background-color: #f5f5f7 !important;
+            color: #1d1d1f !important;
+        }
+
+        html.light aside#sidebar {
+            background-color: #ffffff !important;
+            border-color: #e5e5ea !important;
+            box-shadow: 1px 0 8px rgba(0, 0, 0, 0.03);
+        }
+        html.light aside#sidebar h1 { color: #1d1d1f !important; }
+        html.light aside#sidebar p { color: #8e8e93 !important; }
+        html.light aside#sidebar a:not(.bg-indigo-600) { color: #3a3a3c !important; }
+        html.light aside#sidebar a:not(.bg-indigo-600):hover {
+            background-color: rgba(0, 0, 0, 0.04) !important;
+            color: #007aff !important;
+        }
+        html.light aside#sidebar div.border-t { border-color: #e5e5ea !important; }
+
+        html.light header {
+            background-color: rgba(255, 255, 255, 0.95) !important;
+            border-color: #e5e5ea !important;
+        }
+        html.light header h2 { color: #1d1d1f !important; }
+        html.light #themeToggle {
+            background-color: #e5e5ea !important;
+            border-color: #d1d1d6 !important;
+            color: #1d1d1f !important;
+        }
+
+        html.light .apple-card,
+        html.light .glass-panel {
+            background-color: #ffffff !important;
+            border-color: #e5e5ea !important;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.04) !important;
+        }
+
+        html.light .bg-slate-900,
+        html.light .bg-slate-950,
+        html.light .bg-slate-900\/90,
+        html.light .bg-slate-900\/80,
+        html.light .bg-slate-900\/60,
+        html.light .bg-slate-900\/40,
+        html.light .bg-slate-950\/60,
+        html.light .bg-slate-950\/80,
+        html.light .bg-slate-950\/90 {
+            background-color: #ffffff !important;
+            border-color: #e5e5ea !important;
+        }
+
+        /* --- LIGHT MODE BADGE & ALERT OVERRIDES --- */
+        html.light .bg-amber-950,
+        html.light .bg-amber-950\/80,
+        html.light .bg-amber-950\/50,
+        html.light .bg-amber-900 {
+            background-color: #fffbe6 !important;
+            border-color: #ffe58f !important;
+            color: #d46b08 !important;
+        }
+        html.light .bg-amber-950 span,
+        html.light .bg-amber-950\/50 span,
+        html.light .text-amber-200,
+        html.light .text-amber-300,
+        html.light .text-amber-400 {
+            color: #b75900 !important;
+        }
+
+        html.light .bg-rose-950,
+        html.light .bg-rose-950\/80,
+        html.light .bg-rose-950\/50,
+        html.light .bg-rose-900 {
+            background-color: #fff1f0 !important;
+            border-color: #ffccc7 !important;
+            color: #cf1322 !important;
+        }
+        html.light .bg-rose-950 span,
+        html.light .text-rose-300,
+        html.light .text-rose-400 {
+            color: #cf1322 !important;
+        }
+
+        html.light .bg-emerald-950,
+        html.light .bg-emerald-950\/80,
+        html.light .bg-emerald-950\/50,
+        html.light .bg-emerald-900 {
+            background-color: #f6ffed !important;
+            border-color: #b7eb8f !important;
+            color: #389e0d !important;
+        }
+        html.light .bg-emerald-950 span,
+        html.light .text-emerald-300,
+        html.light .text-emerald-400 {
+            color: #237804 !important;
+        }
+
+        html.light .bg-indigo-950,
+        html.light .bg-indigo-950\/80,
+        html.light .bg-indigo-950\/50,
+        html.light .bg-indigo-900 {
+            background-color: #f0f5ff !important;
+            border-color: #adc6ff !important;
+            color: #1d39c4 !important;
+        }
+        html.light .bg-indigo-950 span,
+        html.light .text-indigo-300,
+        html.light .text-indigo-400 {
+            color: #1d39c4 !important;
+        }
+
+        html.light .text-white,
+        html.light .text-slate-100,
+        html.light .text-slate-200 {
+            color: #1d1d1f !important;
+        }
+
+        html.light .text-slate-300,
+        html.light .text-slate-400 {
+            color: #48484a !important;
+        }
+
+        html.light .text-slate-500 {
+            color: #8e8e93 !important;
+        }
+
+        html.light .border-slate-800,
+        html.light .border-slate-800\/60,
+        html.light .border-slate-800\/80,
+        html.light .border-slate-800\/40,
+        html.light .border-slate-700,
+        html.light .border-slate-700\/60,
+        html.light .divide-slate-800\/60 > :not([hidden]) ~ :not([hidden]) {
+            border-color: #e5e5ea !important;
+        }
+
+        html.light select,
+        html.light input,
+        html.light textarea {
+            background-color: #f2f2f7 !important;
+            border-color: #d1d1d6 !important;
+            color: #1d1d1f !important;
+        }
+
+        html.light table th {
+            background-color: #f2f2f7 !important;
+            color: #636366 !important;
+            border-color: #e5e5ea !important;
+        }
+
+        html.light table td {
+            border-color: #f2f2f7 !important;
+            color: #1d1d1f !important;
+        }
+
+        html.light table tr:hover {
+            background-color: #f2f2f7 !important;
+        }
+
+        html.light .fixed.inset-0 {
+            background-color: rgba(0, 0, 0, 0.3) !important;
+        }
+
+        html.light .fixed.inset-0 > div {
+            background-color: #ffffff !important;
+            border-color: #e5e5ea !important;
+            color: #1d1d1f !important;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.12) !important;
+        }
+
+        html.light .sticky {
+            background-color: #f5f5f7 !important;
+        }
+    </style>
+</head>
+<body class="bg-[#090d16] text-slate-100 min-h-screen flex flex-col transition-colors duration-200">
+
+    <!-- Custom Frameless Title Bar (App Title Left + Mac Traffic Light Buttons Right) -->
+    <div id="customTitleBar" class="w-full bg-[#0a0e1a]/95 border-b border-slate-800/60 px-4 py-2 flex items-center justify-between select-none z-50 shrink-0 backdrop-blur-md" style="-webkit-app-region: drag; cursor: grab;">
+        <!-- Left: App Title (Draggable Region) -->
+        <div class="flex items-center space-x-2 text-xs font-bold text-slate-300">
+            <img src="{{ url_for('static', filename='app_icon.png') }}" class="w-4 h-4 rounded" alt="App Icon">
+            <span>iPortfolio Tracker &mdash; Wealth Cockpit</span>
+        </div>
+
+        <!-- Right: Mac-style Traffic Light Control Buttons -->
+        <div class="flex items-center space-x-2.5" style="-webkit-app-region: no-drag;">
+            <!-- Minimize (Yellow) -->
+            <button onclick="minimizeAppWindow()" title="Minimize Window" class="w-3.5 h-3.5 rounded-full bg-amber-400 hover:bg-amber-500 flex items-center justify-center text-[9px] text-amber-950 font-bold opacity-90 hover:opacity-100 transition shadow-sm group">
+                <i class="fa-solid fa-minus opacity-0 group-hover:opacity-100"></i>
+            </button>
+            <!-- Maximize / Restore (Green) -->
+            <button onclick="toggleMaximizeAppWindow()" title="Maximize / Restore Window" class="w-3.5 h-3.5 rounded-full bg-emerald-500 hover:bg-emerald-600 flex items-center justify-center text-[9px] text-emerald-950 font-bold opacity-90 hover:opacity-100 transition shadow-sm group">
+                <i class="fa-solid fa-expand opacity-0 group-hover:opacity-100"></i>
+            </button>
+            <!-- Close (Red) -->
+            <button onclick="closeAppWindow()" title="Close Application" class="w-3.5 h-3.5 rounded-full bg-rose-500 hover:bg-rose-600 flex items-center justify-center text-[9px] text-rose-950 font-bold opacity-90 hover:opacity-100 transition shadow-sm group">
+                <i class="fa-solid fa-xmark opacity-0 group-hover:opacity-100"></i>
+            </button>
+        </div>
+    </div>
+
+    <!-- Main App Container -->
+    <div class="flex-1 flex flex-col md:flex-row w-full min-h-0 overflow-auto">
+
+    <!-- Mobile Header -->
+    <div class="md:hidden flex items-center justify-between p-4 bg-slate-900/90 border-b border-slate-800/80 backdrop-blur-md">
+        <div class="flex items-center space-x-3">
+            <div class="w-8 h-8 rounded-lg bg-indigo-600 flex items-center justify-center font-bold text-white shadow-sm">
+                <i class="fa-solid fa-chart-pie text-sm"></i>
+            </div>
+            <span class="font-semibold text-base tracking-tight text-white">Portfolio Tracker</span>
+        </div>
+        <button id="mobileMenuBtn" class="text-slate-400 hover:text-white text-lg">
+            <i class="fa-solid fa-bars"></i>
+        </button>
+    </div>
+
+    <!-- Sidebar Navigation -->
+    <aside id="sidebar" class="w-full md:w-64 bg-[#0d1322]/90 border-r border-slate-800/60 p-5 flex flex-col justify-between hidden md:flex shrink-0 backdrop-blur-lg">
+        <div>
+            <!-- App Header / Logo -->
+            <div class="flex items-center space-x-3 mb-8 px-2">
+                <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-indigo-500 to-indigo-700 flex items-center justify-center font-bold text-white shadow-md shadow-indigo-500/20">
+                    <i class="fa-solid fa-chart-line text-sm"></i>
+                </div>
+                <div>
+                    <h1 class="font-bold text-sm tracking-wide text-white">Portfolio Tracker</h1>
+                    <p class="text-[10px] font-medium tracking-wider text-slate-400">Wealth Cockpit</p>
+                </div>
+            </div>
+
+            <!-- Navigation Menu -->
+            <nav class="space-y-5">
+                <!-- Overview -->
+                <div>
+                    <p class="px-3 text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-2">Overview</p>
+                    <div class="space-y-0.5">
+                        <a href="{{ url_for('dashboard.index') }}" class="flex items-center space-x-3 px-3 py-2 rounded-xl text-sm font-medium transition-all {% if request.endpoint == 'dashboard.index' %}bg-indigo-600/90 text-white shadow-sm font-semibold{% else %}text-slate-400 hover:text-slate-200 hover:bg-slate-800/50{% endif %}">
+                            <i class="fa-solid fa-chart-pie w-4 text-center text-xs"></i>
+                            <span>Dashboard</span>
+                        </a>
+                        <a href="{{ url_for('assets.list_assets') }}" class="flex items-center space-x-3 px-3 py-2 rounded-xl text-sm font-medium transition-all {% if 'assets' in request.endpoint %}bg-indigo-600/90 text-white shadow-sm font-semibold{% else %}text-slate-400 hover:text-slate-200 hover:bg-slate-800/50{% endif %}">
+                            <i class="fa-solid fa-wallet w-4 text-center text-xs"></i>
+                            <span>All Assets</span>
+                        </a>
+                        <a href="{{ url_for('categories.list_categories') }}" class="flex items-center space-x-3 px-3 py-2 rounded-xl text-sm font-medium transition-all {% if 'categories' in request.endpoint %}bg-indigo-600/90 text-white shadow-sm font-semibold{% else %}text-slate-400 hover:text-slate-200 hover:bg-slate-800/50{% endif %}">
+                            <i class="fa-solid fa-layer-group w-4 text-center text-xs"></i>
+                            <span>Categories</span>
+                        </a>
+                    </div>
+                </div>
+
+                <!-- Transactions & Cash -->
+                <div>
+                    <p class="px-3 text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-2">Activity</p>
+                    <div class="space-y-0.5">
+                        <a href="{{ url_for('flows.index') }}" class="flex items-center space-x-3 px-3 py-2 rounded-xl text-sm font-medium transition-all {% if request.endpoint == 'flows.index' %}bg-indigo-600/90 text-white shadow-sm font-semibold{% else %}text-slate-400 hover:text-slate-200 hover:bg-slate-800/50{% endif %}">
+                            <i class="fa-solid fa-arrow-right-arrow-left w-4 text-center text-xs"></i>
+                            <span>Flows & Cash</span>
+                        </a>
+                        <a href="{{ url_for('passive_income.index') }}" class="flex items-center space-x-3 px-3 py-2 rounded-xl text-sm font-medium transition-all {% if request.endpoint == 'passive_income.index' %}bg-indigo-600/90 text-white shadow-sm font-semibold{% else %}text-slate-400 hover:text-slate-200 hover:bg-slate-800/50{% endif %}">
+                            <i class="fa-solid fa-sack-dollar w-4 text-center text-xs"></i>
+                            <span>Passive Income</span>
+                        </a>
+                        <a href="{{ url_for('reminders.index') }}" class="flex items-center space-x-3 px-3 py-2 rounded-xl text-sm font-medium transition-all {% if request.endpoint == 'reminders.index' %}bg-indigo-600/90 text-white shadow-sm font-semibold{% else %}text-slate-400 hover:text-slate-200 hover:bg-slate-800/50{% endif %}">
+                            <i class="fa-solid fa-bell w-4 text-center text-xs"></i>
+                            <span>Reminders</span>
+                        </a>
+                    </div>
+                </div>
+
+                <!-- Analytics & Tools -->
+                <div>
+                    <p class="px-3 text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-2">Tools</p>
+                    <div class="space-y-0.5">
+                        <a href="{{ url_for('fi_tracker.index') }}" class="flex items-center space-x-3 px-3 py-2 rounded-xl text-sm font-medium transition-all {% if request.endpoint == 'fi_tracker.index' %}bg-indigo-600/90 text-white shadow-sm font-semibold{% else %}text-slate-400 hover:text-slate-200 hover:bg-slate-800/50{% endif %}">
+                            <i class="fa-solid fa-fire w-4 text-center text-xs text-orange-400"></i>
+                            <span>Time to FI</span>
+                        </a>
+                        <a href="{{ url_for('rebalancer.index') }}" class="flex items-center space-x-3 px-3 py-2 rounded-xl text-sm font-medium transition-all {% if request.endpoint == 'rebalancer.index' %}bg-indigo-600/90 text-white shadow-sm font-semibold{% else %}text-slate-400 hover:text-slate-200 hover:bg-slate-800/50{% endif %}">
+                            <i class="fa-solid fa-scale-balanced w-4 text-center text-xs"></i>
+                            <span>Rebalancer</span>
+                        </a>
+                        <a href="{{ url_for('tax_planner.index') }}" class="flex items-center space-x-3 px-3 py-2 rounded-xl text-sm font-medium transition-all {% if request.endpoint == 'tax_planner.index' %}bg-indigo-600/90 text-white shadow-sm font-semibold{% else %}text-slate-400 hover:text-slate-200 hover:bg-slate-800/50{% endif %}">
+                            <i class="fa-solid fa-percent w-4 text-center text-xs"></i>
+                            <span>Tax Planner</span>
+                        </a>
+                        <a href="{{ url_for('assets.bulk_update') }}" class="flex items-center space-x-3 px-3 py-2 rounded-xl text-sm font-medium transition-all {% if request.endpoint == 'assets.bulk_update' %}bg-indigo-600/90 text-white shadow-sm font-semibold{% else %}text-slate-400 hover:text-slate-200 hover:bg-slate-800/50{% endif %}">
+                            <i class="fa-solid fa-pen-to-square w-4 text-center text-xs"></i>
+                            <span>Bulk CMP Update</span>
+                        </a>
+                        <a href="{{ url_for('settings.bulk_exchange_rates') }}" class="flex items-center space-x-3 px-3 py-2 rounded-xl text-sm font-medium transition-all {% if request.endpoint == 'settings.bulk_exchange_rates' %}bg-indigo-600/90 text-white shadow-sm font-semibold{% else %}text-slate-400 hover:text-slate-200 hover:bg-slate-800/50{% endif %}">
+                            <i class="fa-solid fa-globe w-4 text-center text-xs"></i>
+                            <span>Bulk Exchange Rates</span>
+                        </a>
+                        <a href="{{ url_for('import_wizard.index') }}" class="flex items-center space-x-3 px-3 py-2 rounded-xl text-sm font-medium transition-all {% if request.endpoint == 'import_wizard.index' %}bg-indigo-600/90 text-white shadow-sm font-semibold{% else %}text-slate-400 hover:text-slate-200 hover:bg-slate-800/50{% endif %}">
+                            <i class="fa-solid fa-file-import w-4 text-center text-xs"></i>
+                            <span>Import Wizard</span>
+                        </a>
+                        <a href="{{ url_for('snapshots.index') }}" class="flex items-center space-x-3 px-3 py-2 rounded-xl text-sm font-medium transition-all {% if 'snapshots' in request.endpoint %}bg-indigo-600/90 text-white shadow-sm font-semibold{% else %}text-slate-400 hover:text-slate-200 hover:bg-slate-800/50{% endif %}">
+                            <i class="fa-solid fa-camera w-4 text-center text-xs"></i>
+                            <span>Snapshots</span>
+                        </a>
+                        <a href="{{ url_for('notes.index') }}" class="flex items-center space-x-3 px-3 py-2 rounded-xl text-sm font-medium transition-all {% if request.endpoint == 'notes.index' %}bg-indigo-600/90 text-white shadow-sm font-semibold{% else %}text-slate-400 hover:text-slate-200 hover:bg-slate-800/50{% endif %}">
+                            <i class="fa-solid fa-note-sticky w-4 text-center text-xs"></i>
+                            <span>Research Notes</span>
+                        </a>
+                    </div>
+                </div>
+
+                <!-- Settings -->
+                <div>
+                    <p class="px-3 text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-2">Settings</p>
+                    <div class="space-y-0.5">
+                        <a href="{{ url_for('settings.list_brokers') }}" class="flex items-center space-x-3 px-3 py-2 rounded-xl text-sm font-medium text-slate-400 hover:text-slate-200 hover:bg-slate-800/50 transition">
+                            <i class="fa-solid fa-building-columns w-4 text-center text-xs"></i>
+                            <span>Brokers</span>
+                        </a>
+                        <a href="{{ url_for('settings.list_currencies') }}" class="flex items-center space-x-3 px-3 py-2 rounded-xl text-sm font-medium text-slate-400 hover:text-slate-200 hover:bg-slate-800/50 transition">
+                            <i class="fa-solid fa-coins w-4 text-center text-xs"></i>
+                            <span>Currencies</span>
+                        </a>
+                        <a href="{{ url_for('export.index') }}" class="flex items-center space-x-3 px-3 py-2 rounded-xl text-sm font-medium text-slate-400 hover:text-slate-200 hover:bg-slate-800/50 transition">
+                            <i class="fa-solid fa-database w-4 text-center text-xs"></i>
+                            <span>Export & Database</span>
+                        </a>
+                    </div>
+                </div>
+            </nav>
+        </div>
+
+        <!-- Footer -->
+        <div class="pt-4 border-t border-slate-800/60 text-xs text-slate-400">
+            <p class="font-medium text-slate-400">iPortfolioTracker v2.0</p>
+            <p class="text-[10px] text-slate-400 mt-0.5">Flask + SQLite Core</p>
+        </div>
+    </aside>
+
+    <!-- Main Content Area -->
+    <main class="flex-1 flex flex-col min-w-0 overflow-y-auto">
+        <!-- Top App Bar -->
+        <header class="h-14 bg-[#0d1322]/80 border-b border-slate-800/60 px-6 flex items-center justify-between shrink-0 backdrop-blur-md sticky top-0 z-20">
+            <div class="flex items-center space-x-4">
+                <h2 class="text-sm font-semibold tracking-tight text-slate-200">{% block header_title %}Dashboard{% endblock %}</h2>
+            </div>
+            <div class="flex items-center space-x-3">
+                <button id="themeToggle" title="Toggle Theme" class="w-8 h-8 rounded-lg bg-slate-800/60 border border-slate-700/50 flex items-center justify-center text-slate-400 hover:text-white hover:border-slate-600 transition">
+                    <i class="fa-solid fa-moon text-xs"></i>
+                </button>
+            </div>
+        </header>
+
+        <!-- Flash Messages -->
+        <div class="px-6 pt-4">
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                        <div class="p-3.5 mb-4 rounded-xl text-xs font-medium flex items-center justify-between shadow-sm {% if category == 'success' %}bg-emerald-950/70 border border-emerald-500/30 text-emerald-300{% elif category == 'danger' %}bg-rose-950/70 border border-rose-500/30 text-rose-300{% else %}bg-indigo-950/70 border border-indigo-500/30 text-indigo-300{% endif %}">
+                            <span>{{ message }}</span>
+                            <button onclick="this.parentElement.remove()" class="text-current opacity-70 hover:opacity-100 ml-3">
+                                <i class="fa-solid fa-xmark text-sm"></i>
+                            </button>
+                        </div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+        </div>
+
+        <!-- Dynamic Body Content -->
+        <div class="p-6 md:p-8 flex-1 max-w-7xl w-full mx-auto">
+            {% block content %}{% endblock %}
+        </div>
+        {% block scripts %}{% endblock %}
+    </main>
+
+    </div><!-- End Main App Container -->
+
+    <script>
+        function minimizeAppWindow() {
+            if (window.pywebview && window.pywebview.api && window.pywebview.api.minimize) {
+                window.pywebview.api.minimize();
+            }
+        }
+        function toggleMaximizeAppWindow() {
+            if (window.pywebview && window.pywebview.api && window.pywebview.api.toggle_maximize) {
+                window.pywebview.api.toggle_maximize();
+            }
+        }
+        function closeAppWindow() {
+            if (window.pywebview && window.pywebview.api && window.pywebview.api.close) {
+                window.pywebview.api.close();
+            } else {
+                window.close();
+            }
+        }
+
+        function updateThemeIcon() {
+            const isLight = document.documentElement.classList.contains('light');
+            const btn = document.getElementById('themeToggle');
+            if (btn) {
+                btn.innerHTML = isLight
+                    ? '<i class="fa-solid fa-sun text-xs text-amber-500"></i>'
+                    : '<i class="fa-solid fa-moon text-xs"></i>';
+                btn.title = isLight ? 'Switch to Dark Mode' : 'Switch to Light Mode';
+            }
+        }
+
+        function toggleAppTheme() {
+            const isLight = document.documentElement.classList.contains('light');
+            if (isLight) {
+                document.documentElement.classList.remove('light');
+                document.documentElement.classList.add('dark');
+                localStorage.setItem('theme', 'dark');
+            } else {
+                document.documentElement.classList.remove('dark');
+                document.documentElement.classList.add('light');
+                localStorage.setItem('theme', 'light');
+            }
+            updateThemeIcon();
+        }
+
+        document.addEventListener('click', (e) => {
+            if (e.target.closest('#mobileMenuBtn')) {
+                const sidebar = document.getElementById('sidebar');
+                sidebar?.classList.toggle('hidden');
+            }
+            if (e.target.closest('#themeToggle')) {
+                toggleAppTheme();
+            }
+        });
+
+        document.addEventListener('DOMContentLoaded', updateThemeIcon);
+
+
+        // Universal SPA Navigation Engine
+        async function loadSpaPage(url, pushState = true) {
+            try {
+                const res = await fetch(url, {
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' }
+                });
+                const html = await res.text();
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(html, 'text/html');
+
+                const newMain = doc.querySelector('main');
+                const currentMain = document.querySelector('main');
+
+                if (newMain && currentMain) {
+                    currentMain.innerHTML = newMain.innerHTML;
+                }
+
+                const newTitle = doc.querySelector('title');
+                if (newTitle) {
+                    document.title = newTitle.innerText;
+                }
+
+                if (pushState && window.location.href !== url) {
+                    history.pushState({ url: url }, '', url);
+                }
+
+                // Update active sidebar nav styling
+                const path = new URL(url, window.location.origin).pathname;
+                document.querySelectorAll('#sidebar nav a').forEach(a => {
+                    const aPath = new URL(a.href, window.location.origin).pathname;
+                    if (aPath === path || (path.startsWith('/assets') && aPath.startsWith('/assets'))) {
+                        a.className = "flex items-center space-x-3 px-3 py-2 rounded-xl text-sm font-medium transition-all bg-indigo-600/90 text-white shadow-sm font-semibold";
+                    } else {
+                        a.className = "flex items-center space-x-3 px-3 py-2 rounded-xl text-sm font-medium transition-all text-slate-400 hover:text-slate-200 hover:bg-slate-800/50";
+                    }
+                });
+
+                // Execute embedded scripts in new main element
+                if (currentMain) {
+                    const scripts = currentMain.querySelectorAll('script');
+                    scripts.forEach(oldScript => {
+                        const newScript = document.createElement('script');
+                        Array.from(oldScript.attributes).forEach(attr => newScript.setAttribute(attr.name, attr.value));
+                        newScript.appendChild(document.createTextNode(oldScript.innerHTML));
+                        oldScript.parentNode.replaceChild(newScript, oldScript);
+                    });
+                }
+
+                // Re-initialize tables or pagination
+                document.querySelectorAll('table[data-paginate]').forEach(t => {
+                    const size = parseInt(t.getAttribute('data-paginate')) || 10;
+                    if (!t.id) {
+                        t.id = 'table-' + Math.random().toString(36).substring(2, 9);
+                    }
+                    paginateTable(t.id, size);
+                });
+
+                updateThemeIcon();
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            } catch (err) {
+                console.error('SPA load error:', err);
+                window.location.href = url;
+            }
+        }
+
+        // SPA Navigation Click Interceptor
+        document.addEventListener('click', (e) => {
+            const link = e.target.closest('a');
+            if (!link) return;
+            const href = link.getAttribute('href');
+            if (!href || href.startsWith('#') || href.startsWith('javascript:') || link.target === '_blank' || link.getAttribute('data-no-spa') === 'true') {
+                return;
+            }
+            if (link.origin === window.location.origin) {
+                e.preventDefault();
+                loadSpaPage(href);
+            }
+        });
+
+        // SPA Form Submission Interceptor
+        document.addEventListener('submit', async (e) => {
+            const form = e.target;
+            if (form.getAttribute('data-no-spa') === 'true') return;
+
+            e.preventDefault();
+            const action = form.action || window.location.href;
+            const method = (form.method || 'POST').toUpperCase();
+            const formData = new FormData(form);
+
+            try {
+                const res = await fetch(action, {
+                    method: method,
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'Accept': 'application/json, text/html'
+                    },
+                    body: formData
+                });
+
+                // Close active modals
+                document.querySelectorAll('.fixed.inset-0').forEach(m => m.classList.add('hidden'));
+
+                const contentType = res.headers.get('content-type') || '';
+                if (contentType.includes('application/json')) {
+                    await res.json();
+                    loadSpaPage(window.location.href, false);
+                } else {
+                    const html = await res.text();
+                    const parser = new DOMParser();
+                    const doc = parser.parseFromString(html, 'text/html');
+                    const newMain = doc.querySelector('main');
+                    const currentMain = document.querySelector('main');
+                    if (newMain && currentMain) {
+                        currentMain.innerHTML = newMain.innerHTML;
+                    }
+                }
+            } catch (err) {
+                console.error('Form SPA submit error:', err);
+                loadSpaPage(window.location.href, false);
+            }
+        });
+
+        // SPA Popstate (Back/Forward) Listener
+        window.addEventListener('popstate', (e) => {
+            const targetUrl = (e.state && e.state.url) ? e.state.url : window.location.href;
+            loadSpaPage(targetUrl, false);
+        });
+    </script>
+
+    <!-- Universal Table Pagination Script (Max 10 entries per page) -->
+    <script>
+        function paginateTable(tableId, pageSize = 10) {
+            const table = document.getElementById(tableId);
+            if (!table) return;
+
+            const tbody = table.querySelector('tbody');
+            if (!tbody) return;
+
+            const allRows = Array.from(tbody.children).filter(r => r.tagName === 'TR');
+            const rows = allRows.filter(r => {
+                const td = r.querySelector('td');
+                return !(td && td.hasAttribute('colspan') && allRows.length === 1);
+            });
+
+            if (rows.length === 0) return;
+
+            table._currentPage = 1;
+            table._totalPages = Math.max(1, Math.ceil(rows.length / pageSize));
+            table._pageSize = pageSize;
+
+            let navId = tableId + '-pagination';
+            let nav = document.getElementById(navId);
+            if (!nav) {
+                nav = document.createElement('div');
+                nav.id = navId;
+                nav.className = 'flex flex-col sm:flex-row items-center justify-between gap-3 pt-4 border-t border-slate-800/80 text-xs px-1 mt-3';
+                const parent = table.parentElement.parentElement || table.parentElement;
+                parent.appendChild(nav);
+            }
+
+            function render() {
+                const page = table._currentPage || 1;
+                const totalPages = table._totalPages || 1;
+
+                if (totalPages <= 1) {
+                    rows.forEach(r => r.style.display = '');
+                    nav.style.display = 'none';
+                    return;
+                }
+
+                nav.style.display = 'flex';
+                const start = (page - 1) * pageSize;
+                const end = start + pageSize;
+
+                rows.forEach((row, idx) => {
+                    row.style.display = (idx >= start && idx < end) ? '' : 'none';
+                });
+
+                const showingStart = start + 1;
+                const showingEnd = Math.min(end, rows.length);
+
+                nav.innerHTML = `
+                    <span class="text-slate-400 font-medium">Showing ${showingStart} to ${showingEnd} of ${rows.length} entries</span>
+                    <div class="flex items-center space-x-1.5 font-semibold">
+                        <button type="button" ${page === 1 ? 'disabled' : ''} onclick="changeTablePage('${tableId}', -1)"
+                                class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 disabled:opacity-40 disabled:cursor-not-allowed transition shadow-sm">
+                            &larr; Previous
+                        </button>
+                        <span class="px-3 py-1.5 text-slate-300 font-mono text-[11px] bg-slate-950 border border-slate-800 rounded-lg">
+                            Page ${page} of ${totalPages}
+                        </span>
+                        <button type="button" ${page === totalPages ? 'disabled' : ''} onclick="changeTablePage('${tableId}', 1)"
+                                class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 disabled:opacity-40 disabled:cursor-not-allowed transition shadow-sm">
+                            Next &rarr;
+                        </button>
+                    </div>
+                `;
+            }
+
+            table._renderPage = render;
+            render();
+        }
+
+        function changeTablePage(tableId, delta) {
+            const table = document.getElementById(tableId);
+            if (!table || !table._renderPage) return;
+            let newPage = (table._currentPage || 1) + delta;
+            if (newPage >= 1 && newPage <= table._totalPages) {
+                table._currentPage = newPage;
+                table._renderPage();
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            document.querySelectorAll('table[data-paginate]').forEach(t => {
+                const size = parseInt(t.getAttribute('data-paginate')) || 10;
+                if (!t.id) {
+                    t.id = 'table-' + Math.random().toString(36).substring(2, 9);
+                }
+                paginateTable(t.id, size);
+            });
+        });
+    </script>
+</body>
+</html>
+

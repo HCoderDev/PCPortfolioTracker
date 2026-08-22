@@ -1,0 +1,261 @@
+{% extends "base.html" %}
+
+{% block title %}Bulk Current Price Update — iPortfolioTracker{% endblock %}
+{% block header_title %}Bulk Asset CMP Update{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+
+    <!-- Header & Controls Card -->
+    <div class="apple-card rounded-3xl p-6 space-y-4">
+        <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-800 pb-4">
+            <div>
+                <h3 class="font-bold text-lg text-white flex items-center space-x-2">
+                    <i class="fa-solid fa-pen-to-square text-indigo-400"></i>
+                    <span>Bulk Price &amp; Balance Update</span>
+                </h3>
+                <p class="text-xs text-slate-400 mt-1">Select specific categories to update current market prices (CMP) or account balances in bulk.</p>
+            </div>
+            
+            <div class="flex items-center space-x-2">
+                <a href="{{ url_for('import_wizard.index') }}" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold rounded-xl transition flex items-center space-x-1.5">
+                    <i class="fa-solid fa-file-csv text-xs"></i>
+                    <span>Import CMP CSV</span>
+                </a>
+            </div>
+        </div>
+
+        <!-- Category Multi-Select Filter Bar & Search -->
+        <div class="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 pt-1">
+            
+            <!-- Category Multi-Select Dropdown -->
+            <div class="relative inline-block text-left" id="categoryFilterDropdown">
+                <button type="button" onclick="toggleCategoryMenu()" class="w-full md:w-auto px-4 py-2.5 bg-slate-950 border border-slate-800 text-white rounded-xl text-xs font-bold flex items-center justify-between space-x-3 shadow-sm hover:border-slate-700 transition">
+                    <div class="flex items-center space-x-2">
+                        <i class="fa-solid fa-filter text-indigo-400 text-xs"></i>
+                        <span id="selectedCategoriesSummary">Categories: All Selected ({{ categories|length }})</span>
+                    </div>
+                    <i class="fa-solid fa-chevron-down text-[10px] text-slate-400 ml-2"></i>
+                </button>
+
+                <!-- Checkbox Menu -->
+                <div id="categoryMenu" class="hidden absolute left-0 mt-2 w-72 bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl z-30 p-3 space-y-2">
+                    <div class="flex items-center justify-between border-b border-slate-800 pb-2">
+                        <span class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Select Categories</span>
+                        <div class="space-x-2 text-[11px]">
+                            <button type="button" onclick="selectAllCategories(true)" class="text-indigo-400 hover:underline font-semibold">All</button>
+                            <span class="text-slate-600">&middot;</span>
+                            <button type="button" onclick="selectAllCategories(false)" class="text-slate-400 hover:underline font-semibold">Reset</button>
+                        </div>
+                    </div>
+
+                    <div class="max-h-56 overflow-y-auto space-y-1.5 pt-1 pr-1 font-mono text-xs">
+                        {% for cat in categories %}
+                        <label class="flex items-center space-x-2.5 p-1.5 rounded-lg hover:bg-slate-800/60 cursor-pointer transition">
+                            <input type="checkbox" class="category-checkbox rounded bg-slate-950 border-slate-700 text-indigo-600 focus:ring-0 focus:ring-offset-0" data-cat-id="{{ cat.id }}" data-cat-name="{{ cat.name }}" checked onchange="onCategoryFilterChange()">
+                            <span class="font-sans font-medium text-slate-200 text-xs">{{ cat.name }}</span>
+                        </label>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Instant Search Input -->
+            <div class="relative flex-1 max-w-md">
+                <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-3 text-slate-500 text-xs"></i>
+                <input type="text" id="assetSearchInput" oninput="filterAssetsTable()" placeholder="Search assets by name or ticker..." class="w-full pl-9 pr-4 py-2 bg-slate-950 border border-slate-800 text-white rounded-xl text-xs font-medium focus:border-indigo-500">
+            </div>
+
+        </div>
+
+        <!-- Quick Category Chips -->
+        <div class="flex items-center space-x-2 overflow-x-auto pt-2 pb-1 text-xs">
+            <span class="text-[11px] font-bold text-slate-500 uppercase tracking-wider shrink-0 mr-1">Quick Select:</span>
+            <button type="button" onclick="quickSelectCategory('all')" class="cat-chip px-3 py-1 bg-indigo-600 text-white font-bold rounded-lg shrink-0 transition" data-chip="all">All</button>
+            {% for cat in categories %}
+            <button type="button" onclick="quickSelectCategory({{ cat.id }})" class="cat-chip px-3 py-1 bg-slate-950 border border-slate-800 hover:border-slate-700 text-slate-300 font-medium rounded-lg shrink-0 transition" data-chip="{{ cat.id }}">{{ cat.name }}</button>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- Bulk Update Form & Table -->
+    <div class="apple-card rounded-3xl p-6 space-y-4">
+        <form method="POST" action="{{ url_for('assets.bulk_update') }}" class="space-y-4">
+            <div class="overflow-x-auto">
+                <table id="bulkUpdateTable" class="w-full text-left text-xs border-collapse">
+                    <thead>
+                        <tr class="bg-slate-950/60 border-b border-slate-800 font-bold uppercase tracking-wider text-slate-400">
+                            <th class="py-3.5 px-4">Asset Name</th>
+                            <th class="py-3.5 px-4">Category</th>
+                            <th class="py-3.5 px-4">Holding Type</th>
+                            <th class="py-3.5 px-4 text-right">Current CMP / Account Balance</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-800/60 font-mono">
+                        {% for asset in assets %}
+                        <tr class="asset-row hover:bg-slate-800/40 transition" 
+                            data-cat-id="{{ asset.category_id }}" 
+                            data-asset-name="{{ asset.name|lower }}" 
+                            data-ticker="{{ (asset.ticker or '')|lower }}">
+                            <td class="py-3 px-4 font-sans font-bold text-white">
+                                <span>{{ asset.name }}</span>
+                                {% if asset.ticker %}
+                                <span class="ml-1.5 px-1.5 py-0.5 bg-slate-800 text-indigo-400 font-mono text-[10px] rounded font-bold">{{ asset.ticker }}</span>
+                                {% endif %}
+                            </td>
+                            <td class="py-3 px-4 font-sans font-medium text-slate-300">{{ asset.category_name }}</td>
+                            <td class="py-3 px-4 font-sans">
+                                <span class="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase {% if asset.holding_type == 'bankBalance' %}bg-emerald-950 text-emerald-300 border border-emerald-500/30{% elif asset.holding_type == 'investment' %}bg-indigo-950 text-indigo-300 border border-indigo-500/30{% else %}bg-amber-950 text-amber-300 border border-amber-500/30{% endif %}">
+                                    {{ asset.holding_type }}
+                                </span>
+                            </td>
+                            <td class="py-3 px-4 text-right">
+                                <div class="inline-flex items-center justify-end space-x-1">
+                                    <span class="text-slate-400 font-sans">₹</span>
+                                    <input type="number" step="any" name="price_{{ asset.id }}" value="{{ asset.current_price }}"
+                                           class="w-36 bg-slate-950 border border-slate-800 text-white rounded-xl p-2 text-right font-mono text-xs font-bold focus:border-indigo-500">
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+
+                <!-- Empty state when no assets match category filter -->
+                <div id="noMatchState" class="hidden p-12 text-center space-y-2">
+                    <i class="fa-solid fa-filter-circle-xmark text-3xl text-slate-600"></i>
+                    <p class="font-bold text-sm text-white">No Assets Match Selected Categories</p>
+                    <p class="text-xs text-slate-400">Select one or more categories above to display assets for price updates.</p>
+                </div>
+            </div>
+
+            <div class="pt-4 border-t border-slate-800 flex justify-between items-center">
+                <span id="visibleAssetCount" class="text-xs font-mono text-slate-400">Showing {{ assets|length }} assets</span>
+                <div class="flex items-center space-x-3">
+                    <a href="{{ url_for('assets.list_assets') }}" class="px-4 py-2.5 bg-slate-800 text-slate-300 rounded-xl font-semibold hover:bg-slate-700 text-xs transition">Cancel</a>
+                    <button type="submit" class="px-6 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-xl shadow-lg shadow-indigo-600/30 transition flex items-center space-x-2">
+                        <i class="fa-solid fa-floppy-disk text-xs"></i>
+                        <span>Save All Selected Prices</span>
+                    </button>
+                </div>
+            </div>
+        </form>
+    </div>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    function toggleCategoryMenu() {
+        const menu = document.getElementById('categoryMenu');
+        if (menu) menu.classList.toggle('hidden');
+    }
+
+    // Close menu when clicking outside
+    document.addEventListener('click', function(e) {
+        const container = document.getElementById('categoryFilterDropdown');
+        if (container && !container.contains(e.target)) {
+            const menu = document.getElementById('categoryMenu');
+            if (menu) menu.classList.add('hidden');
+        }
+    });
+
+    function getSelectedCategoryIds() {
+        const checkboxes = document.querySelectorAll('.category-checkbox:checked');
+        return Array.from(checkboxes).map(cb => parseInt(cb.dataset.catId));
+    }
+
+    function selectAllCategories(state) {
+        document.querySelectorAll('.category-checkbox').forEach(cb => {
+            cb.checked = state;
+        });
+        onCategoryFilterChange();
+    }
+
+    function quickSelectCategory(catId) {
+        document.querySelectorAll('.cat-chip').forEach(chip => {
+            if (chip.dataset.chip == String(catId)) {
+                chip.classList.remove('bg-slate-950', 'border-slate-800', 'text-slate-300');
+                chip.classList.add('bg-indigo-600', 'text-white');
+            } else {
+                chip.classList.remove('bg-indigo-600', 'text-white');
+                chip.classList.add('bg-slate-950', 'border-slate-800', 'text-slate-300');
+            }
+        });
+
+        if (catId === 'all') {
+            selectAllCategories(true);
+        } else {
+            document.querySelectorAll('.category-checkbox').forEach(cb => {
+                cb.checked = (cb.dataset.catId == String(catId));
+            });
+            onCategoryFilterChange();
+        }
+    }
+
+    function onCategoryFilterChange() {
+        const selectedIds = getSelectedCategoryIds();
+        const totalCategories = document.querySelectorAll('.category-checkbox').length;
+        const summaryEl = document.getElementById('selectedCategoriesSummary');
+
+        if (summaryEl) {
+            if (selectedIds.length === 0) {
+                summaryEl.innerText = 'Categories: None Selected';
+            } else if (selectedIds.length === totalCategories) {
+                summaryEl.innerText = `Categories: All Selected (${totalCategories})`;
+            } else if (selectedIds.length === 1) {
+                const firstCb = document.querySelector('.category-checkbox:checked');
+                summaryEl.innerText = firstCb ? firstCb.dataset.catName : '1 Category';
+            } else {
+                summaryEl.innerText = `Categories: ${selectedIds.length} Selected`;
+            }
+        }
+
+        filterAssetsTable();
+    }
+
+    function filterAssetsTable() {
+        const selectedIds = getSelectedCategoryIds();
+        const searchQuery = (document.getElementById('assetSearchInput').value || '').trim().toLowerCase();
+        
+        const rows = document.querySelectorAll('.asset-row');
+        let visibleCount = 0;
+
+        rows.forEach(row => {
+            const catId = parseInt(row.dataset.catId);
+            const assetName = row.dataset.assetName || '';
+            const ticker = row.dataset.ticker || '';
+
+            const matchesCategory = selectedIds.includes(catId);
+            const matchesSearch = !searchQuery || assetName.includes(searchQuery) || ticker.includes(searchQuery);
+
+            if (matchesCategory && matchesSearch) {
+                row.classList.remove('hidden');
+                visibleCount++;
+            } else {
+                row.classList.add('hidden');
+            }
+        });
+
+        const tableHeader = document.querySelector('#bulkUpdateTable thead');
+        const noMatchState = document.getElementById('noMatchState');
+        const visibleCountEl = document.getElementById('visibleAssetCount');
+
+        if (visibleCount === 0) {
+            if (tableHeader) tableHeader.classList.add('hidden');
+            if (noMatchState) noMatchState.classList.remove('hidden');
+        } else {
+            if (tableHeader) tableHeader.classList.remove('hidden');
+            if (noMatchState) noMatchState.classList.add('hidden');
+        }
+
+        if (visibleCountEl) {
+            visibleCountEl.innerText = `Showing ${visibleCount} asset${visibleCount !== 1 ? 's' : ''}`;
+        }
+    }
+
+    // Initialize on page load
+    onCategoryFilterChange();
+</script>
+{% endblock %}

@@ -1,0 +1,106 @@
+{% extends "base.html" %}
+
+{% block title %}Bulk Exchange Rate Update — iPortfolioTracker{% endblock %}
+{% block header_title %}Bulk Exchange Rate Update{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+
+    <!-- Header Card -->
+    <div class="apple-card rounded-3xl p-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+            <h3 class="font-bold text-lg text-white flex items-center space-x-2">
+                <i class="fa-solid fa-globe text-indigo-400"></i>
+                <span>Bulk Exchange Rate Update (TT Sell / TT Buy)</span>
+            </h3>
+            <p class="text-xs text-slate-400 mt-1">
+                Update historical exchange rates (1 Foreign Currency = ? INR) for transactions on foreign holdings like US Stocks.
+            </p>
+        </div>
+
+        <div class="flex items-center space-x-2">
+            <a href="{{ url_for('import_wizard.index') }}" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-xl shadow-lg shadow-indigo-600/30 transition flex items-center space-x-1.5">
+                <i class="fa-solid fa-file-import text-xs"></i>
+                <span>Import Forex CSV</span>
+            </a>
+        </div>
+    </div>
+
+    {% if not grouped_transactions %}
+    <div class="apple-card rounded-3xl p-12 text-center space-y-3">
+        <i class="fa-solid fa-earth-americas text-4xl text-slate-600"></i>
+        <h4 class="font-bold text-base text-white">No Foreign Transactions Found</h4>
+        <p class="text-xs text-slate-400 max-w-md mx-auto">
+            You currently have no recorded transactions in foreign currencies (e.g. USD, EUR). Once you add foreign assets and transactions, you can bulk update exchange rates here.
+        </p>
+    </div>
+    {% else %}
+    <form method="POST" action="{{ url_for('settings.bulk_exchange_rates') }}" class="space-y-6">
+        {% for asset_name, txs in grouped_transactions.items() %}
+        <div class="apple-card rounded-3xl p-6 space-y-4">
+            <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+                <h4 class="font-bold text-sm text-white flex items-center space-x-2">
+                    <i class="fa-solid fa-building text-indigo-400 text-xs"></i>
+                    <span>{{ asset_name }}</span>
+                    <span class="text-xs text-slate-400 font-mono">({{ txs[0].currency_code }})</span>
+                </h4>
+                <span class="text-xs text-slate-400">{{ txs|length }} Transaction{% if txs|length != 1 %}s{% endif %}</span>
+            </div>
+
+            <div class="overflow-x-auto">
+                <table class="w-full text-left text-xs border-collapse">
+                    <thead>
+                        <tr class="bg-slate-950/60 border-b border-slate-800 font-bold uppercase tracking-wider text-slate-400">
+                            <th class="py-3 px-4">Date</th>
+                            <th class="py-3 px-4">Type</th>
+                            <th class="py-3 px-4 text-right">Units / Price</th>
+                            <th class="py-3 px-4 text-right">Amount ({{ txs[0].currency_code }})</th>
+                            <th class="py-3 px-4 text-right">INR Exchange Rate (1 {{ txs[0].currency_code }} = ? INR)</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-800/60 font-mono">
+                        {% for tx in txs %}
+                        <tr class="hover:bg-slate-800/40 transition">
+                            <td class="py-3.5 px-4 font-sans font-semibold text-white">
+                                {{ tx.date.strftime('%b %d, %Y') if tx.date else '' }}
+                            </td>
+                            <td class="py-3.5 px-4">
+                                <span class="px-2.5 py-0.5 rounded-full font-bold text-[10px] uppercase {% if tx.type == 'BUY' %}bg-indigo-950 text-indigo-300 border border-indigo-500/30{% elif tx.type == 'SELL' %}bg-rose-950 text-rose-300 border border-rose-500/30{% else %}bg-amber-950 text-amber-300 border border-amber-500/30{% endif %}">
+                                    {{ tx.raw_type or tx.type }}
+                                </span>
+                            </td>
+                            <td class="py-3.5 px-4 text-right text-slate-300 font-sans">
+                                {% if tx.units > 0 %}
+                                {{ "%.4f"|format(tx.units) }} @ {{ tx.currency_code }} {{ "%.2f"|format(tx.price_per_unit) }}
+                                {% else %}
+                                —
+                                {% endif %}
+                            </td>
+                            <td class="py-3.5 px-4 text-right font-bold text-white">
+                                {{ tx.currency_code }} {{ "%.2f"|format(tx.units * tx.price_per_unit if tx.units > 0 else tx.price_per_unit) }}
+                            </td>
+                            <td class="py-3.5 px-4 text-right">
+                                <div class="inline-flex items-center justify-end space-x-1">
+                                    <span class="text-slate-400 font-sans">₹</span>
+                                    <input type="number" step="any" name="rate_{{ tx.id }}" value="{{ tx.inr_exchange_rate or '' }}" placeholder="e.g. 83.50" class="w-28 bg-slate-950 border border-slate-800 text-white rounded-xl p-1.5 text-right font-mono text-xs font-bold focus:border-indigo-500">
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        {% endfor %}
+
+        <div class="apple-card rounded-3xl p-4 flex justify-end">
+            <button type="submit" class="px-6 py-3 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-xl shadow-lg shadow-indigo-600/30 transition flex items-center space-x-2">
+                <i class="fa-solid fa-floppy-disk text-xs"></i>
+                <span>Save All Exchange Rates</span>
+            </button>
+        </div>
+    </form>
+    {% endif %}
+
+</div>
+{% endblock %}

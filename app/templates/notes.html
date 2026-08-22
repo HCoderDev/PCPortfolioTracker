@@ -1,0 +1,87 @@
+{% extends "base.html" %}
+
+{% block title %}Research Notes — iPortfolioTracker{% endblock %}
+{% block header_title %}Asset Research Notes{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+
+    <!-- Top Action Bar -->
+    <div class="flex items-center justify-between bg-slate-900/80 border border-slate-800 rounded-2xl p-4 glass-panel">
+        <div>
+            <h3 class="font-bold text-base text-white">Investment Thesis &amp; Research Notes</h3>
+            <p class="text-xs text-slate-400">Keep research notes, earnings updates, and investment theses attached to portfolio assets.</p>
+        </div>
+        <button onclick="document.getElementById('addNoteModal').classList.remove('hidden')" class="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-xl shadow-lg shadow-indigo-600/30 transition">
+            <i class="fa-solid fa-plus mr-1"></i> Add Note
+        </button>
+    </div>
+
+    <!-- Notes List Grid -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {% for n in notes %}
+        <div class="bg-slate-900/80 border border-slate-800 rounded-2xl p-5 glass-panel flex flex-col justify-between space-y-3">
+            <div>
+                <div class="flex items-center justify-between">
+                    <h4 class="font-bold text-base text-white">{{ n.title }}</h4>
+                    <span class="text-[11px] text-slate-400 font-mono">{{ n.date | date_fmt }}</span>
+                </div>
+                <p class="text-xs text-indigo-400 font-semibold mt-0.5">Asset: {{ n.asset_name or 'General Thesis' }}</p>
+                <p class="text-xs text-slate-300 mt-2 whitespace-pre-line leading-relaxed">{{ n.description }}</p>
+            </div>
+            <div class="pt-2 border-t border-slate-800 flex justify-end">
+                <form method="POST" action="{{ url_for('notes.delete_note', note_id=n.id) }}" onsubmit="return confirm('Delete note?')">
+                    <button type="submit" class="text-xs text-slate-500 hover:text-rose-400">
+                        <i class="fa-solid fa-trash mr-1"></i> Delete
+                    </button>
+                </form>
+            </div>
+        </div>
+        {% else %}
+        <div class="col-span-2 bg-slate-900/80 border border-slate-800 rounded-2xl p-8 text-center text-slate-500 text-xs glass-panel">
+            No research notes added yet. Click "Add Note" to record investment thesis notes.
+        </div>
+        {% endfor %}
+    </div>
+
+</div>
+
+<!-- Add Note Modal -->
+<div id="addNoteModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
+    <div class="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-lg p-6 shadow-2xl space-y-4">
+        <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+            <h3 class="font-bold text-base text-white">Add Research Note</h3>
+            <button onclick="document.getElementById('addNoteModal').classList.add('hidden')" class="text-slate-400 hover:text-white">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+        </div>
+        <form method="POST" action="{{ url_for('notes.add_note') }}" class="space-y-3 text-xs">
+            <div>
+                <label class="block font-semibold text-slate-300 mb-1">Title</label>
+                <input type="text" name="title" required placeholder="e.g. Q3 Earnings Thesis Update" class="w-full bg-slate-950 border border-slate-800 text-white rounded-xl p-2.5">
+            </div>
+            <div>
+                <label class="block font-semibold text-slate-300 mb-1">Asset (Optional)</label>
+                <select name="asset_id" class="w-full bg-slate-950 border border-slate-800 text-white rounded-xl p-2.5">
+                    <option value="">General Portfolio Note</option>
+                    {% for a in assets %}
+                    <option value="{{ a.id }}">{{ a.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div>
+                <label class="block font-semibold text-slate-300 mb-1">Date</label>
+                <input type="date" name="date" required class="w-full bg-slate-950 border border-slate-800 text-white rounded-xl p-2.5">
+            </div>
+            <div>
+                <label class="block font-semibold text-slate-300 mb-1">Description / Thesis Notes</label>
+                <textarea name="description" rows="4" required placeholder="Write investment research notes..." class="w-full bg-slate-950 border border-slate-800 text-white rounded-xl p-2.5"></textarea>
+            </div>
+            <div class="pt-3 border-t border-slate-800 flex justify-end space-x-2">
+                <button type="button" onclick="document.getElementById('addNoteModal').classList.add('hidden')" class="px-4 py-2 bg-slate-800 text-slate-300 rounded-xl font-semibold hover:bg-slate-700">Cancel</button>
+                <button type="submit" class="px-4 py-2 bg-indigo-600 text-white rounded-xl font-semibold hover:bg-indigo-500 shadow-md shadow-indigo-600/30">Save Note</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

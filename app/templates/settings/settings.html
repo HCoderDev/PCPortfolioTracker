@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+
+{% block title %}User Settings — iPortfolioTracker{% endblock %}
+{% block header_title %}User Profile &amp; Global Settings{% endblock %}
+
+{% block content %}
+<div class="space-y-6 max-w-2xl">
+
+    <div class="bg-slate-900/80 border border-slate-800 rounded-2xl p-6 glass-panel space-y-4">
+        <h3 class="font-bold text-base text-white">Global User Settings</h3>
+
+        <form method="POST" action="{{ url_for('settings.user_settings') }}" class="space-y-4 text-xs">
+            <div>
+                <label class="block font-semibold text-slate-300 mb-1">Username / Investor Name</label>
+                <input type="text" name="username" value="{{ user.username if user else 'Portfolio User' }}" required class="w-full bg-slate-950 border border-slate-800 text-white rounded-xl p-2.5">
+            </div>
+
+            <div>
+                <label class="block font-semibold text-slate-300 mb-1">Date of Birth</label>
+                <input type="date" name="birth_date" value="{{ user.birth_date if user and user.birth_date else '1996-01-01' }}" class="w-full bg-slate-950 border border-slate-800 text-white rounded-xl p-2.5 font-mono">
+                <p class="text-[11px] text-slate-500 mt-1">Used for Time to FI projections and retirement timeline analysis.</p>
+            </div>
+
+            <div>
+                <label class="block font-semibold text-slate-300 mb-1">Income Tax Slab Rate (%)</label>
+                <input type="number" step="any" name="tax_slab_rate" value="{{ (user.tax_slab_rate * 100.0) if user else 30.0 }}" required class="w-full bg-slate-950 border border-slate-800 text-white rounded-xl p-2.5 font-mono">
+                <p class="text-[11px] text-slate-500 mt-1">Used for Debt FIFO tax calculations and dividend income tax estimations.</p>
+            </div>
+
+            <div class="pt-3 border-t border-slate-800 flex justify-end">
+                <button type="submit" class="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl shadow-lg shadow-indigo-600/30">
+                    Save Profile Settings
+                </button>
+            </div>
+        </form>
+    </div>
+
+</div>
+{% endblock %}

@@ -1,0 +1,186 @@
+{% extends "base.html" %}
+
+{% block title %}Portfolio Rebalancer — iPortfolioTracker{% endblock %}
+{% block header_title %}Target Allocation Rebalancer{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+
+    <!-- Rebalancer Header Summary Card -->
+    <div class="apple-card rounded-3xl p-6 space-y-4">
+        <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div>
+                <h3 class="font-bold text-lg text-white flex items-center space-x-2">
+                    <i class="fa-solid fa-scale-balanced text-indigo-400"></i>
+                    <span>Portfolio Rebalancer &amp; Drift Analysis</span>
+                </h3>
+                <p class="text-xs text-slate-400 mt-1">
+                    Maintain your asset allocation goals across categories. Total Portfolio Value: <span class="font-mono font-bold text-indigo-300">₹{{ "%.2f"|format(total_portfolio_inr) }}</span>
+                </p>
+            </div>
+            
+            <div class="flex items-center space-x-3">
+                <div class="px-3.5 py-1.5 rounded-xl border text-xs font-bold font-mono flex items-center space-x-2 {% if abs(targets_sum - 100.0) < 0.1 %}bg-emerald-950/80 text-emerald-300 border-emerald-500/30{% else %}bg-amber-950/80 text-amber-300 border-amber-500/30{% endif %}">
+                    <i class="fa-solid {% if abs(targets_sum - 100.0) < 0.1 %}fa-circle-check{% else %}fa-triangle-exclamation{% endif %} text-xs"></i>
+                    <span>Target Sum: {{ "%.1f"|format(targets_sum) }}% / 100%</span>
+                </div>
+            </div>
+        </div>
+
+        {% if abs(targets_sum - 100.0) >= 0.1 %}
+        <div class="p-3 bg-amber-950/50 border border-amber-500/30 rounded-xl flex items-center space-x-3 text-xs text-amber-200">
+            <i class="fa-solid fa-circle-info text-amber-400 text-base shrink-0"></i>
+            <span>Your target allocation percentages currently sum to <strong>{{ "%.1f"|format(targets_sum) }}%</strong> instead of 100.0%. Please adjust the category targets below to total exactly 100%.</span>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- 1. TARGET ALLOCATION CONFIGURATION TABLE -->
+    <div class="apple-card rounded-3xl p-6 space-y-4">
+        <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+            <h4 class="font-bold text-sm text-white flex items-center space-x-2">
+                <i class="fa-solid fa-sliders text-indigo-400 text-xs"></i>
+                <span>Configure Category Target Allocations</span>
+            </h4>
+        </div>
+
+        <form method="POST" action="{{ url_for('rebalancer.save_config') }}" class="space-y-4">
+            <div class="overflow-x-auto">
+                <table class="w-full text-left text-xs border-collapse">
+                    <thead>
+                        <tr class="bg-slate-950/60 border-b border-slate-800 font-bold uppercase tracking-wider text-slate-400">
+                            <th class="py-3 px-4">Category</th>
+                            <th class="py-3 px-4 text-right">Current Value (INR)</th>
+                            <th class="py-3 px-4 text-right">Actual %</th>
+                            <th class="py-3 px-4 text-right">Target %</th>
+                            <th class="py-3 px-4 text-right">Drift %</th>
+                            <th class="py-3 px-4 text-right">Target Value (INR)</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-800/60 font-mono">
+                        {% for row in categories %}
+                        <tr class="hover:bg-slate-800/40 transition">
+                            <td class="py-3.5 px-4 font-sans font-bold text-white flex items-center space-x-2">
+                                <span class="w-2 h-2 rounded-full bg-indigo-500"></span>
+                                <span>{{ row.category.name }}</span>
+                            </td>
+                            <td class="py-3.5 px-4 text-right text-slate-300">₹{{ "%.2f"|format(row.current_val_inr) }}</td>
+                            <td class="py-3.5 px-4 text-right text-indigo-300 font-bold">{{ "%.1f"|format(row.actual_pct) }}%</td>
+                            <td class="py-3.5 px-4 text-right">
+                                <div class="inline-flex items-center justify-end space-x-1">
+                                    <input type="number" step="any" name="target_{{ row.category.id }}" value="{{ row.target_pct }}" class="w-20 bg-slate-950 border border-slate-800 text-white rounded-xl p-1.5 text-right font-mono text-xs font-bold focus:border-indigo-500">
+                                    <span class="text-slate-400 font-sans">%</span>
+                                </div>
+                            </td>
+                            <td class="py-3.5 px-4 text-right font-bold">
+                                {% set abs_drift = abs(row.drift_pct) %}
+                                <span class="px-2 py-0.5 rounded-md text-xs {% if abs_drift <= 1.5 %}bg-emerald-950 text-emerald-300 border border-emerald-500/30{% elif abs_drift <= 5.0 %}bg-amber-950 text-amber-300 border border-amber-500/30{% else %}bg-rose-950 text-rose-300 border border-rose-500/30{% endif %}">
+                                    {% if row.drift_pct > 0 %}+{% endif %}{{ "%.1f"|format(row.drift_pct) }}%
+                                </span>
+                            </td>
+                            <td class="py-3.5 px-4 text-right text-slate-300">₹{{ "%.2f"|format(row.target_val_inr) }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="pt-3 border-t border-slate-800 flex justify-end">
+                <button type="submit" class="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-xl shadow-lg shadow-indigo-600/30 transition">
+                    Save Target Allocations
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <!-- 2. PORTFOLIO DRIFT VISUAL ANALYSIS SECTION -->
+    <div class="apple-card rounded-3xl p-6 space-y-4">
+        <h4 class="font-bold text-sm text-white flex items-center space-x-2 border-b border-slate-800 pb-3">
+            <i class="fa-solid fa-chart-bar text-indigo-400 text-xs"></i>
+            <span>Portfolio Allocation &amp; Visual Drift Analysis</span>
+        </h4>
+
+        <div class="space-y-4 pt-2">
+            {% for row in categories %}
+            {% set abs_drift = abs(row.drift_pct) %}
+            <div class="space-y-1.5 p-3 rounded-2xl bg-slate-950/60 border border-slate-800/80">
+                <div class="flex items-center justify-between text-xs">
+                    <span class="font-semibold text-white">{{ row.category.name }}</span>
+                    <div class="flex items-center space-x-3 font-mono">
+                        <span class="text-slate-400">{{ "%.1f"|format(row.actual_pct) }}% Act vs {{ "%.1f"|format(row.target_pct) }}% Tgt</span>
+                        <span class="font-bold {% if abs_drift <= 1.5 %}text-emerald-400{% elif abs_drift <= 5.0 %}text-amber-400{% else %}text-rose-400{% endif %}">
+                            {% if row.drift_pct > 0 %}+{% endif %}{{ "%.1f"|format(row.drift_pct) }}% Drift
+                        </span>
+                    </div>
+                </div>
+
+                <!-- Visual Bar Indicator -->
+                <div class="relative w-full h-3 bg-slate-900 rounded-full overflow-hidden border border-slate-800">
+                    <div class="h-full rounded-full transition-all duration-500 {% if abs_drift <= 1.5 %}bg-emerald-500{% elif row.drift_pct > 0 %}bg-rose-500{% else %}bg-amber-500{% endif %}" style="width: {{ [0, [100, row.actual_pct]|min]|max }}%;"></div>
+                    <!-- Target marker line -->
+                    <div class="absolute top-0 bottom-0 w-0.5 bg-white shadow-sm z-10" style="left: {{ [0, [100, row.target_pct]|min]|max }}%;"></div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- 3. RECOMMENDED REBALANCING TRADES SECTION -->
+    <div class="apple-card rounded-3xl p-6 space-y-4">
+        <h4 class="font-bold text-sm text-white flex items-center space-x-2 border-b border-slate-800 pb-3">
+            <i class="fa-solid fa-list-check text-indigo-400 text-xs"></i>
+            <span>Recommended Rebalancing Trades</span>
+        </h4>
+
+        <div class="overflow-x-auto">
+            <table class="w-full text-left text-xs border-collapse">
+                <thead>
+                    <tr class="bg-slate-950/60 border-b border-slate-800 font-bold uppercase tracking-wider text-slate-400">
+                        <th class="py-3 px-4">Category</th>
+                        <th class="py-3 px-4 text-center">Action</th>
+                        <th class="py-3 px-4 text-right">Amount (INR)</th>
+                        <th class="py-3 px-4 text-right">Amount (Local Currency)</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-800/60 font-mono">
+                    {% for row in categories %}
+                    <tr class="hover:bg-slate-800/40 transition">
+                        <td class="py-3.5 px-4 font-sans font-bold text-white">{{ row.category.name }}</td>
+                        <td class="py-3.5 px-4 text-center font-sans">
+                            {% if row.rebalance_action_inr > 100 %}
+                            <span class="px-3 py-1 bg-emerald-950 text-emerald-300 border border-emerald-500/30 rounded-full font-extrabold text-[11px] uppercase">
+                                BUY
+                            </span>
+                            {% elif row.rebalance_action_inr < -100 %}
+                            <span class="px-3 py-1 bg-rose-950 text-rose-300 border border-rose-500/30 rounded-full font-extrabold text-[11px] uppercase">
+                                SELL
+                            </span>
+                            {% else %}
+                            <span class="px-3 py-1 bg-slate-900 text-slate-400 border border-slate-800 rounded-full font-bold text-[11px] uppercase">
+                                HOLD / BALANCED
+                            </span>
+                            {% endif %}
+                        </td>
+                        <td class="py-3.5 px-4 text-right font-bold {% if row.rebalance_action_inr > 100 %}text-emerald-400{% elif row.rebalance_action_inr < -100 %}text-rose-400{% else %}text-slate-400{% endif %}">
+                            {% if abs(row.rebalance_action_inr) > 100 %}
+                            ₹{{ "%.2f"|format(abs(row.rebalance_action_inr)) }}
+                            {% else %}
+                            —
+                            {% endif %}
+                        </td>
+                        <td class="py-3.5 px-4 text-right font-bold text-slate-300">
+                            {% if abs(row.rebalance_action_inr) > 100 %}
+                            {{ row.category.currency_code }} {{ "%.2f"|format(abs(row.rebalance_action_local)) }}
+                            {% else %}
+                            —
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+</div>
+{% endblock %}

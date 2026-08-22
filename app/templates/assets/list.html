@@ -1,0 +1,310 @@
+{% extends "base.html" %}
+
+{% block title %}All Assets — iPortfolioTracker{% endblock %}
+{% block header_title %}All Portfolio Assets{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+
+    <!-- Top Action Toolbar & Filter Controls -->
+    <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 bg-slate-900/80 border border-slate-800 rounded-2xl p-4 glass-panel">
+
+        <!-- Search Bar & Filters -->
+        <form method="GET" action="{{ url_for('assets.list_assets') }}" class="flex flex-wrap items-center gap-3 w-full md:w-auto">
+            <!-- Search Input -->
+            <div class="relative min-w-[200px]">
+                <i class="fa-solid fa-magnifying-glass absolute left-3 top-3 text-slate-500 text-xs"></i>
+                <input type="text" name="q" value="{{ search_q }}" placeholder="Search asset or ticker..."
+                       class="w-full bg-slate-950 border border-slate-800 text-slate-200 text-xs rounded-xl pl-9 pr-3 py-2.5 focus:outline-none focus:border-indigo-500">
+            </div>
+
+            <!-- Holding Type Pill Tabs -->
+            <select name="type" onchange="this.form.submit()" class="bg-slate-950 border border-slate-800 text-slate-200 text-xs rounded-xl px-3 py-2.5 focus:outline-none focus:border-indigo-500">
+                <option value="all" {% if filter_type == 'all' %}selected{% endif %}>All Types</option>
+                <option value="investment" {% if filter_type == 'investment' %}selected{% endif %}>Stocks & MFs</option>
+                <option value="contract" {% if filter_type == 'contract' %}selected{% endif %}>Non-Unitized / Contracts</option>
+            </select>
+
+            <!-- Recency Status Filter -->
+            <select name="recency" onchange="this.form.submit()" class="bg-slate-950 border border-slate-800 text-slate-200 text-xs rounded-xl px-3 py-2.5 focus:outline-none focus:border-indigo-500">
+                <option value="all" {% if filter_recency == 'all' %}selected{% endif %}>All Recency</option>
+                <option value="active" {% if filter_recency == 'active' %}selected{% endif %}>Active (&le; 30d)</option>
+                <option value="moderate" {% if filter_recency == 'moderate' %}selected{% endif %}>Moderate (30-90d)</option>
+                <option value="dormant" {% if filter_recency == 'dormant' %}selected{% endif %}>Dormant (&gt; 90d)</option>
+                <option value="never" {% if filter_recency == 'never' %}selected{% endif %}>Never Invested</option>
+            </select>
+
+            <!-- Category Filter -->
+            <select name="category_id" onchange="this.form.submit()" class="bg-slate-950 border border-slate-800 text-slate-200 text-xs rounded-xl px-3 py-2.5 focus:outline-none focus:border-indigo-500">
+                <option value="">All Categories</option>
+                {% for c in categories %}
+                <option value="{{ c.id }}" {% if filter_cat == c.id %}selected{% endif %}>{{ c.name }}</option>
+                {% endfor %}
+            </select>
+
+            <!-- Hide Sold Off Assets Filter -->
+            <select name="hide_sold" onchange="this.form.submit()" class="bg-slate-950 border border-slate-800 text-slate-200 text-xs rounded-xl px-3 py-2.5 focus:outline-none focus:border-indigo-500 font-medium">
+                <option value="0" {% if hide_sold == '0' %}selected{% endif %}>Show Sold Off Assets</option>
+                <option value="1" {% if hide_sold == '1' %}selected{% endif %}>Hide Sold Off Assets</option>
+            </select>
+
+            <!-- Sort By Options -->
+            <select name="sort" onchange="this.form.submit()" class="bg-slate-950 border border-slate-800 text-slate-200 text-xs rounded-xl px-3 py-2.5 focus:outline-none focus:border-indigo-500 font-medium">
+                <option value="name" {% if sort_by in ['name', 'name_asc'] %}selected{% endif %}>Sort by Name (A &rarr; Z)</option>
+                <option value="name_desc" {% if sort_by == 'name_desc' %}selected{% endif %}>Sort by Name (Z &rarr; A)</option>
+                <option value="value" {% if sort_by in ['value', 'value_desc'] %}selected{% endif %}>Sort by Current Value (High &rarr; Low)</option>
+                <option value="value_asc" {% if sort_by == 'value_asc' %}selected{% endif %}>Sort by Current Value (Low &rarr; High)</option>
+                <option value="invested" {% if sort_by in ['invested', 'invested_desc'] %}selected{% endif %}>Sort by Invested (High &rarr; Low)</option>
+                <option value="invested_asc" {% if sort_by == 'invested_asc' %}selected{% endif %}>Sort by Invested (Low &rarr; High)</option>
+                <option value="gain" {% if sort_by in ['gain', 'gain_desc'] %}selected{% endif %}>Sort by Gain/Loss (High &rarr; Low)</option>
+                <option value="gain_asc" {% if sort_by == 'gain_asc' %}selected{% endif %}>Sort by Gain/Loss (Low &rarr; High)</option>
+                <option value="gain_pct_desc" {% if sort_by == 'gain_pct_desc' %}selected{% endif %}>Sort by Gain/Loss % (High &rarr; Low)</option>
+                <option value="gain_pct_asc" {% if sort_by == 'gain_pct_asc' %}selected{% endif %}>Sort by Gain/Loss % (Low &rarr; High)</option>
+            </select>
+        </form>
+
+        <!-- Right Buttons -->
+        <div class="flex items-center space-x-2">
+            <a href="{{ url_for('assets.bulk_update') }}" class="px-3.5 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold rounded-xl border border-slate-700 transition">
+                <i class="fa-solid fa-pen-to-square mr-1"></i> Bulk CMP Update
+            </a>
+            <button onclick="document.getElementById('addAssetModal').classList.remove('hidden')" class="px-3.5 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold rounded-xl shadow-lg shadow-indigo-600/30 transition">
+                <i class="fa-solid fa-plus mr-1"></i> Add Asset
+            </button>
+        </div>
+
+    </div>
+
+    <!-- Assets Table Card -->
+    <div class="bg-slate-900/80 border border-slate-800 rounded-2xl overflow-hidden glass-panel">
+        <div class="overflow-x-auto">
+            <table id="assetsListTable" data-paginate="10" class="w-full text-left border-collapse">
+                <thead>
+                    <tr class="bg-slate-950/60 border-b border-slate-800 text-[11px] font-bold uppercase tracking-wider text-slate-400">
+                        <th class="py-3.5 px-4">Asset Name</th>
+                        <th class="py-3.5 px-4">Category</th>
+                        <th class="py-3.5 px-4">Type</th>
+                        <th class="py-3.5 px-4">Recency Status</th>
+                        <th class="py-3.5 px-4 text-right">Units</th>
+                        <th class="py-3.5 px-4 text-right">Current Price</th>
+                        <th class="py-3.5 px-4 text-right">Invested (INR)</th>
+                        <th class="py-3.5 px-4 text-right">Current Value (INR)</th>
+                        <th class="py-3.5 px-4 text-right">Gain / Loss</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-800/60 text-xs">
+                    {% for item in assets %}
+                    <tr class="hover:bg-slate-800/40 transition cursor-pointer {% if item.is_sold_off %}opacity-50{% endif %}" onclick="window.location='{{ url_for('assets.asset_detail', asset_id=item.asset.id) }}'">
+                        <td class="py-3.5 px-4 font-semibold text-white">
+                            <div class="flex items-center space-x-2">
+                                <span>{{ item.asset.name }}</span>
+                                {% if item.asset.ticker %}
+                                <span class="px-1.5 py-0.5 bg-slate-800 text-indigo-400 font-mono text-[10px] rounded">{{ item.asset.ticker }}</span>
+                                {% endif %}
+                            </div>
+                        </td>
+                        <td class="py-3.5 px-4 text-slate-400">{{ item.category_name }}</td>
+                        <td class="py-3.5 px-4">
+                            <span class="px-2 py-0.5 rounded text-[10px] font-bold uppercase {% if item.holding_type == 'investment' %}bg-indigo-950 text-indigo-300 border border-indigo-500/30{% else %}bg-amber-950 text-amber-300 border border-amber-500/30{% endif %}">
+                                {{ item.holding_type }}
+                            </span>
+                        </td>
+                        <td class="py-3.5 px-4">
+                            <span class="px-2 py-0.5 rounded text-[10px] font-medium {% if 'Active' in item.recency %}bg-emerald-950 text-emerald-400 border border-emerald-500/30{% elif 'Moderate' in item.recency %}bg-amber-950 text-amber-400 border border-amber-500/30{% else %}bg-slate-800 text-slate-400{% endif %}">
+                                {{ item.recency }}
+                            </span>
+                        </td>
+                        <td class="py-3.5 px-4 text-right font-mono text-slate-300">{{ "%.4f"|format(item.units) }}</td>
+                        <td class="py-3.5 px-4 text-right font-mono text-slate-300">
+                            {% if item.currency_code != 'INR' %}
+                            <span>{{ (item.asset.current_price * item.rate) | currency('INR') }}</span>
+                            <span class="text-[9px] text-slate-400 font-sans block">({{ item.asset.current_price | currency(item.currency_code) }})</span>
+                            {% else %}
+                            {{ item.asset.current_price | currency('INR') }}
+                            {% endif %}
+                        </td>
+                        <td class="py-3.5 px-4 text-right font-mono text-slate-300">{{ item.invested_inr | currency('INR') }}</td>
+                        <td class="py-3.5 px-4 text-right font-mono font-bold text-white">{{ item.current_value_inr | currency('INR') }}</td>
+                        <td class="py-3.5 px-4 text-right font-mono font-bold {% if item.gain_inr >= 0 %}text-emerald-400{% else %}text-rose-400{% endif %}">
+                            {% if item.gain_inr >= 0 %}+{% endif %}{{ item.gain_inr | currency('INR') }}
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="9" class="py-8 text-center text-slate-500">No assets found matching the filter criteria.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+</div>
+
+<!-- Add Asset Modal -->
+<div id="addAssetModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
+    <div class="bg-slate-900 border border-slate-800 rounded-3xl w-full max-w-lg p-6 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
+        <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+            <h3 class="font-bold text-base text-white">Add New Asset</h3>
+            <button onclick="document.getElementById('addAssetModal').classList.add('hidden')" class="text-slate-400 hover:text-white">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+        </div>
+        <form method="POST" action="{{ url_for('assets.add_asset') }}" class="space-y-3 text-xs">
+            <div class="grid grid-cols-2 gap-3">
+                <div>
+                    <label class="block font-semibold text-slate-300 mb-1">Holding Type</label>
+                    <select name="holding_type" id="add_asset_holding_type" required onchange="onAssetHoldingTypeChange(this)" class="w-full bg-slate-950 border border-slate-800 text-white rounded-xl p-2.5">
+                        <option value="investment">Stocks / Mutual Funds</option>
+                        <option value="bankBalance">Bank Balance</option>
+                        <option value="fixedDeposit">Fixed Deposit / RD</option>
+                        <option value="postOffice">Post Office Scheme (PPF/NSC/MIS)</option>
+                        <option value="epf">EPF / Provident Fund</option>
+                        <option value="insuranceAnnuity">LIC / Insurance / Annuity</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block font-semibold text-slate-300 mb-1">Category</label>
+                    <select name="category_id" required class="w-full bg-slate-950 border border-slate-800 text-white rounded-xl p-2.5">
+                        {% for c in categories %}
+                        <option value="{{ c.id }}">{{ c.name }} ({{ c.currency_code }})</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+
+            <div>
+                <label id="add_asset_name_label" class="block font-semibold text-slate-300 mb-1">Asset Name</label>
+                <input type="text" id="add_asset_name" name="name" required placeholder="e.g. Reliance, Apple Inc" class="w-full bg-slate-950 border border-slate-800 text-white rounded-xl p-2.5 focus:border-indigo-500">
+            </div>
+
+            <!-- Investment fields -->
+            <div id="field_group_investment" class="grid grid-cols-2 gap-3">
+                <div>
+                    <label class="block font-semibold text-slate-300 mb-1">Ticker / Symbol</label>
+                    <input type="text" name="ticker" placeholder="e.g. RELIANCE, AAPL" class="w-full bg-slate-950 border border-slate-800 text-white rounded-xl p-2.5">
+                </div>
+                <div>
+                    <label class="block font-semibold text-slate-300 mb-1">Current CMP / Price</label>
+                    <input type="number" step="any" name="current_price" value="0.0" class="w-full bg-slate-950 border border-slate-800 text-white rounded-xl p-2.5">
+                </div>
+            </div>
+
+            <!-- Non-unitized / Institution fields -->
+            <div id="field_group_institution" class="hidden">
+                <label class="block font-semibold text-slate-300 mb-1">Institution / Bank Name (Optional)</label>
+                <input type="text" name="institution_name" placeholder="e.g. HDFC Bank, SBI, LIC" class="w-full bg-slate-950 border border-slate-800 text-white rounded-xl p-2.5">
+            </div>
+
+            <!-- Balance / Value Field -->
+            <div id="field_group_balance" class="hidden grid grid-cols-2 gap-3">
+                <div>
+                    <label id="add_balance_label" class="block font-semibold text-slate-300 mb-1">Current Account Balance</label>
+                    <input type="number" step="any" name="current_price" value="0.0" class="w-full bg-slate-950 border border-slate-800 text-white rounded-xl p-2.5 font-mono">
+                </div>
+                <div id="field_interest_rate" class="hidden">
+                    <label class="block font-semibold text-slate-300 mb-1">Interest Rate (% p.a.)</label>
+                    <input type="number" step="any" name="interest_rate" placeholder="e.g. 7.5" class="w-full bg-slate-950 border border-slate-800 text-white rounded-xl p-2.5 font-mono">
+                </div>
+            </div>
+
+            <!-- FD / Post Office specific fields -->
+            <div id="field_group_fd" class="hidden space-y-3">
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block font-semibold text-slate-300 mb-1">Principal Amount</label>
+                        <input type="number" step="any" name="principal_amount" placeholder="Deposited amount" class="w-full bg-slate-950 border border-slate-800 text-white rounded-xl p-2.5 font-mono">
+                    </div>
+                    <div>
+                        <label class="block font-semibold text-slate-300 mb-1">Interest Payout Mode</label>
+                        <select name="payout_frequency" class="w-full bg-slate-950 border border-slate-800 text-white rounded-xl p-2.5">
+                            <option value="cumulative">Cumulative / At Maturity</option>
+                            <option value="monthly">Monthly Payout</option>
+                            <option value="quarterly">Quarterly Payout</option>
+                            <option value="annual">Annual Payout</option>
+                        </select>
+                    </div>
+                </div>
+                <div>
+                    <label class="block font-semibold text-slate-300 mb-1">Maturity Date (Optional)</label>
+                    <input type="date" name="maturity_date" class="w-full bg-slate-950 border border-slate-800 text-white rounded-xl p-2.5">
+                </div>
+            </div>
+
+            <!-- LIC / Insurance specific fields -->
+            <div id="field_group_insurance" class="hidden space-y-3">
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block font-semibold text-slate-300 mb-1">Policy / Account Number</label>
+                        <input type="text" name="policy_number" placeholder="Policy #" class="w-full bg-slate-950 border border-slate-800 text-white rounded-xl p-2.5">
+                    </div>
+                    <div>
+                        <label class="block font-semibold text-slate-300 mb-1">Annual Premium Amount</label>
+                        <input type="number" step="any" name="premium_amount" placeholder="e.g. 50000" class="w-full bg-slate-950 border border-slate-800 text-white rounded-xl p-2.5 font-mono">
+                    </div>
+                </div>
+                <div>
+                    <label class="block font-semibold text-slate-300 mb-1">Payment Term (Years)</label>
+                    <input type="number" name="premium_term_years" placeholder="e.g. 15" class="w-full bg-slate-950 border border-slate-800 text-white rounded-xl p-2.5 font-mono">
+                </div>
+            </div>
+
+            <div class="pt-3 border-t border-slate-800 flex justify-end space-x-2">
+                <button type="button" onclick="document.getElementById('addAssetModal').classList.add('hidden')" class="px-4 py-2 bg-slate-800 text-slate-300 rounded-xl font-semibold hover:bg-slate-700">Cancel</button>
+                <button type="submit" class="px-4 py-2 bg-indigo-600 text-white rounded-xl font-semibold hover:bg-indigo-500 shadow-md shadow-indigo-600/30">Save Asset</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+    function onAssetHoldingTypeChange(selectEl) {
+        if (!selectEl) return;
+        const val = selectEl.value;
+
+        const groupInv = document.getElementById('field_group_investment');
+        const groupInst = document.getElementById('field_group_institution');
+        const groupBal = document.getElementById('field_group_balance');
+        const fieldInt = document.getElementById('field_interest_rate');
+        const groupFd = document.getElementById('field_group_fd');
+        const groupIns = document.getElementById('field_group_insurance');
+
+        const nameInput = document.getElementById('add_asset_name');
+        const balLabel = document.getElementById('add_balance_label');
+
+        if (groupInv) groupInv.classList.toggle('hidden', val !== 'investment');
+        if (groupInst) groupInst.classList.toggle('hidden', val === 'investment');
+        if (groupBal) groupBal.classList.toggle('hidden', val === 'investment');
+        if (fieldInt) fieldInt.classList.toggle('hidden', val === 'investment' || val === 'bankBalance');
+        if (groupFd) groupFd.classList.toggle('hidden', val !== 'fixedDeposit' && val !== 'postOffice');
+        if (groupIns) groupIns.classList.toggle('hidden', val !== 'insuranceAnnuity');
+
+        if (nameInput) {
+            switch (val) {
+                case 'investment': nameInput.placeholder = 'e.g. Reliance, Apple Inc'; break;
+                case 'bankBalance': nameInput.placeholder = 'e.g. HDFC Savings Account'; break;
+                case 'fixedDeposit': nameInput.placeholder = 'e.g. SBI 1-Yr FD, HDFC Tax Saver'; break;
+                case 'postOffice': nameInput.placeholder = 'e.g. PPF Account, NSC V'; break;
+                case 'epf': nameInput.placeholder = 'e.g. EPFO Account / UAN'; break;
+                case 'insuranceAnnuity': nameInput.placeholder = 'e.g. LIC Jeevan Umang'; break;
+            }
+        }
+
+        if (balLabel) {
+            switch (val) {
+                case 'bankBalance': balLabel.innerText = 'Current Account Balance'; break;
+                case 'fixedDeposit': balLabel.innerText = 'Current FD Value / Total Balance'; break;
+                case 'postOffice': balLabel.innerText = 'Current Scheme Balance'; break;
+                case 'epf': balLabel.innerText = 'Accumulated EPF Balance'; break;
+                case 'insuranceAnnuity': balLabel.innerText = 'Current Cash / Surrender Value'; break;
+                default: balLabel.innerText = 'Current Price / Value'; break;
+            }
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        const sel = document.getElementById('add_asset_holding_type');
+        if (sel) onAssetHoldingTypeChange(sel);
+    });
+</script>
+{% endblock %}

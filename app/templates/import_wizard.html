@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+
+{% block title %}Import Wizard — iPortfolioTracker{% endblock %}
+{% block header_title %}File & Statement Import Wizard{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+
+    <div class="bg-slate-900/80 border border-slate-800 rounded-2xl p-6 glass-panel space-y-4 max-w-2xl">
+        <div>
+            <h3 class="font-bold text-base text-white">Import Portfolio Statements</h3>
+            <p class="text-xs text-slate-400 mt-1">Upload CSV or XLSX statement files containing trades, holdings, or dividends. Rows will be automatically matched to existing portfolio assets via Symbol, Name, or Aliases (`addAlias`).</p>
+        </div>
+
+        <form method="POST" action="{{ url_for('import_wizard.process_import') }}" enctype="multipart/form-data" class="space-y-4 text-xs">
+            <div class="border-2 border-dashed border-slate-700 hover:border-indigo-500 rounded-2xl p-6 text-center space-y-2 bg-slate-950/60 transition">
+                <i class="fa-solid fa-cloud-arrow-up text-3xl text-indigo-400"></i>
+                <p class="font-semibold text-slate-200">Drag and drop statement file here, or click to browse</p>
+                <p class="text-[11px] text-slate-500">Supports CSV, XLSX files</p>
+                <input type="file" name="file" required accept=".csv,.xlsx" class="w-full text-slate-400 py-2">
+            </div>
+
+            <div class="pt-3 border-t border-slate-800 flex justify-end space-x-2">
+                <button type="submit" class="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl shadow-lg shadow-indigo-600/30 transition">
+                    Upload &amp; Process Import &rarr;
+                </button>
+            </div>
+        </form>
+    </div>
+
+</div>
+{% endblock %}

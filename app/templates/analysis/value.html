@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+
+{% block title %}Graham Value Analysis — {{ asset.name }}{% endblock %}
+{% block header_title %}Graham Value Model: {{ asset.name }}{% endblock %}
+
+{% block content %}
+<div class="space-y-6 max-w-3xl">
+
+    <div class="bg-slate-900/80 border border-slate-800 rounded-2xl p-6 glass-panel space-y-4">
+        <h3 class="font-bold text-base text-white">Stock Value &amp; PE Analysis Parameters</h3>
+
+        <form method="POST" action="{{ url_for('analysis.stock_value_analysis', asset_id=asset.id) }}" class="space-y-4 text-xs">
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label class="block font-semibold text-slate-300 mb-1">Current Market Price (CMP)</label>
+                    <input type="number" step="any" name="cmp" value="{{ analysis.cmp if analysis else asset.current_price }}" required class="w-full bg-slate-950 border border-slate-800 text-white rounded-xl p-2.5 font-mono">
+                </div>
+                <div>
+                    <label class="block font-semibold text-slate-300 mb-1">Intrinsic PE</label>
+                    <input type="number" step="any" name="intrinsic_pe" value="{{ analysis.intrinsic_pe if analysis else 15.0 }}" class="w-full bg-slate-950 border border-slate-800 text-white rounded-xl p-2.5 font-mono">
+                </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label class="block font-semibold text-slate-300 mb-1">Industry PE</label>
+                    <input type="number" step="any" name="industry_pe" value="{{ analysis.industry_pe if analysis else 20.0 }}" class="w-full bg-slate-950 border border-slate-800 text-white rounded-xl p-2.5 font-mono">
+                </div>
+                <div>
+                    <label class="block font-semibold text-slate-300 mb-1">Book Value per Share</label>
+                    <input type="number" step="any" name="book_value" value="{{ analysis.book_value if analysis else 0.0 }}" class="w-full bg-slate-950 border border-slate-800 text-white rounded-xl p-2.5 font-mono">
+                </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label class="block font-semibold text-slate-300 mb-1">Debt to Equity Ratio</label>
+                    <input type="number" step="any" name="debt_to_equity" value="{{ analysis.debt_to_equity if analysis else 0.0 }}" class="w-full bg-slate-950 border border-slate-800 text-white rounded-xl p-2.5 font-mono">
+                </div>
+                <div>
+                    <label class="block font-semibold text-slate-300 mb-1">Consensus Growth Rate (% p.a.)</label>
+                    <input type="number" step="any" name="consensus_growth_rate" value="{{ analysis.consensus_growth_rate if analysis else 10.0 }}" class="w-full bg-slate-950 border border-slate-800 text-white rounded-xl p-2.5 font-mono">
+                </div>
+            </div>
+
+            <div>
+                <label class="block font-semibold text-slate-300 mb-1">Historical EPS String (comma-separated)</label>
+                <input type="text" name="eps_values_string" value="{{ analysis.eps_values_string if analysis else '' }}" placeholder="e.g. 45.2, 52.1, 60.8, 71.4" class="w-full bg-slate-950 border border-slate-800 text-white rounded-xl p-2.5 font-mono">
+            </div>
+
+            <div class="pt-3 border-t border-slate-800 flex justify-end space-x-2">
+                <a href="{{ url_for('assets.asset_detail', asset_id=asset.id) }}" class="px-4 py-2 bg-slate-800 text-slate-300 rounded-xl font-semibold hover:bg-slate-700">Cancel</a>
+                <button type="submit" class="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl shadow-lg shadow-indigo-600/30">Save Analysis</button>
+            </div>
+        </form>
+    </div>
+
+</div>
+{% endblock %}

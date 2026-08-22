@@ -1,0 +1,598 @@
+{% extends "base.html" %}
+
+{% block title %}Passive Income — Portfolio Tracker{% endblock %}
+{% block header_title %}Passive Income Tracker{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+
+    <!-- HEADER TOOLBAR & FILTERS CARD -->
+    <div class="apple-card rounded-3xl p-6 space-y-4">
+        <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div>
+                <p class="text-[10px] font-bold tracking-widest text-indigo-400 uppercase">Passive Income Dashboard</p>
+                <h2 class="text-2xl font-black text-white tracking-tight mt-0.5">Dividend &amp; Income Insights</h2>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="flex items-center space-x-2 shrink-0">
+                <button type="button" onclick="document.getElementById('categoryRulesModal').classList.remove('hidden')" class="px-3.5 py-2.5 bg-indigo-500/15 hover:bg-indigo-500/25 border border-indigo-500/30 text-indigo-300 text-xs font-bold rounded-xl transition flex items-center space-x-1.5">
+                    <i class="fa-solid fa-sliders text-xs"></i>
+                    <span>Income Rules</span>
+                </button>
+                <button type="button" onclick="document.getElementById('addTxModal').classList.remove('hidden')" class="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-xl shadow-lg shadow-indigo-600/30 transition flex items-center space-x-1.5">
+                    <i class="fa-solid fa-plus text-xs"></i>
+                    <span>Log Income</span>
+                </button>
+            </div>
+        </div>
+
+        <div class="border-t border-slate-800/60 my-2"></div>
+
+        <!-- Period Type Selector -->
+        <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div class="bg-slate-950 p-1 rounded-2xl border border-slate-800 flex space-x-1 shrink-0">
+                <a href="{{ url_for('passive_income.index', period='monthly', year=selected_year, month=selected_month, filter=income_filter) }}" class="px-4 py-2 rounded-xl text-xs font-bold transition {% if period_type == 'monthly' %}bg-indigo-600 text-white shadow-sm{% else %}text-slate-400 hover:text-white{% endif %}">
+                    Monthly
+                </a>
+                <a href="{{ url_for('passive_income.index', period='yearly', year=selected_year, month=selected_month, filter=income_filter) }}" class="px-4 py-2 rounded-xl text-xs font-bold transition {% if period_type == 'yearly' %}bg-indigo-600 text-white shadow-sm{% else %}text-slate-400 hover:text-white{% endif %}">
+                    Yearly
+                </a>
+                <a href="{{ url_for('passive_income.index', period='lifetime', year=selected_year, month=selected_month, filter=income_filter) }}" class="px-4 py-2 rounded-xl text-xs font-bold transition {% if period_type == 'lifetime' %}bg-indigo-600 text-white shadow-sm{% else %}text-slate-400 hover:text-white{% endif %}">
+                    Lifetime
+                </a>
+            </div>
+
+            <!-- Controls & Filters Row -->
+            <div class="flex flex-wrap items-center gap-3 text-xs w-full sm:w-auto">
+                {% if period_type != 'lifetime' %}
+                <!-- Year Select -->
+                <div class="flex items-center space-x-1.5">
+                    <label class="text-slate-400 font-medium">Year:</label>
+                    <select onchange="location = this.value;" class="bg-slate-950 border border-slate-800 text-white rounded-xl px-3 py-1.5 font-bold focus:outline-none focus:border-indigo-500">
+                        {% for y in available_years %}
+                        <option value="{{ url_for('passive_income.index', period=period_type, year=y, month=selected_month, filter=income_filter) }}" {% if y == selected_year %}selected{% endif %}>
+                            {{ y }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                {% if period_type == 'monthly' %}
+                <!-- Month Select -->
+                <div class="flex items-center space-x-1.5">
+                    <label class="text-slate-400 font-medium">Month:</label>
+                    <select onchange="location = this.value;" class="bg-slate-950 border border-slate-800 text-white rounded-xl px-3 py-1.5 font-bold focus:outline-none focus:border-indigo-500">
+                        {% set months_list = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'] %}
+                        {% for m_idx in range(1, 13) %}
+                        <option value="{{ url_for('passive_income.index', period=period_type, year=selected_year, month=m_idx, filter=income_filter) }}" {% if m_idx == selected_month %}selected{% endif %}>
+                            {{ months_list[m_idx - 1] }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                {% endif %}
+                {% endif %}
+
+                <!-- Income Type Filter Select -->
+                <div class="flex items-center space-x-1.5">
+                    <label class="text-slate-400 font-medium">Filter:</label>
+                    <select onchange="location = this.value;" class="bg-slate-950 border border-slate-800 text-white rounded-xl px-3 py-1.5 font-bold focus:outline-none focus:border-indigo-500">
+                        <option value="{{ url_for('passive_income.index', period=period_type, year=selected_year, month=selected_month, filter='all') }}" {% if income_filter == 'all' %}selected{% endif %}>All Types</option>
+                        <option value="{{ url_for('passive_income.index', period=period_type, year=selected_year, month=selected_month, filter='dividends') }}" {% if income_filter == 'dividends' %}selected{% endif %}>Dividends</option>
+                        <option value="{{ url_for('passive_income.index', period=period_type, year=selected_year, month=selected_month, filter='interest') }}" {% if income_filter == 'interest' %}selected{% endif %}>Interest</option>
+                        <option value="{{ url_for('passive_income.index', period=period_type, year=selected_year, month=selected_month, filter='benefits') }}" {% if income_filter == 'benefits' %}selected{% endif %}>Coupons &amp; Benefits</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- KEY KPI INSIGHT CARDS -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <!-- Total Passive Income Card -->
+        <div class="apple-card rounded-3xl p-6 flex flex-col justify-between">
+            <div class="flex items-center justify-between">
+                <p class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Total Passive Income</p>
+                <div class="w-8 h-8 rounded-xl bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center text-emerald-400">
+                    <i class="fa-solid fa-coins text-xs"></i>
+                </div>
+            </div>
+            <div class="mt-3">
+                <h3 class="text-3xl font-black text-emerald-400 font-mono tracking-tight">{{ total_income | currency('INR') }}</h3>
+                <p class="text-[11px] text-slate-400 mt-1">
+                    {% if period_type == 'monthly' %}
+                        Month of {{ selected_month }}/{{ selected_year }}
+                    {% elif period_type == 'yearly' %}
+                        Calendar Year {{ selected_year }}
+                    {% else %}
+                        Lifetime ({{ starting_year }} &ndash; {{ current_year }})
+                    {% endif %}
+                </p>
+            </div>
+        </div>
+
+        <!-- Payouts & Rate Card -->
+        <div class="apple-card rounded-3xl p-6 flex flex-col justify-between">
+            <div class="flex items-center justify-between">
+                <p class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Payouts &amp; Rate</p>
+                <div class="w-8 h-8 rounded-xl bg-indigo-500/15 border border-indigo-500/30 flex items-center justify-center text-indigo-400">
+                    <i class="fa-solid fa-arrow-trend-up text-xs"></i>
+                </div>
+            </div>
+            <div class="mt-3">
+                <h3 class="text-2xl font-extrabold text-white font-sans">{{ total_count }} Payout Receipts</h3>
+                <p class="text-xs font-bold text-indigo-400 font-mono mt-1">Avg: {{ monthly_avg | currency('INR') }}/mo</p>
+            </div>
+        </div>
+
+        <!-- Top Producing Asset Card -->
+        <div class="apple-card rounded-3xl p-6 flex flex-col justify-between">
+            <div class="flex items-center justify-between">
+                <p class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Top Producing Asset &amp; Yield</p>
+                <div class="w-8 h-8 rounded-xl bg-amber-500/15 border border-amber-500/30 flex items-center justify-center text-amber-400">
+                    <i class="fa-solid fa-trophy text-xs"></i>
+                </div>
+            </div>
+            <div class="mt-3">
+                {% if top_asset %}
+                <h3 class="text-lg font-bold text-white truncate" title="{{ top_asset.name }}">{{ top_asset.name }}</h3>
+                <p class="text-xs font-bold text-emerald-400 font-mono mt-0.5">{{ top_asset.amount_inr | currency('INR') }} Payout</p>
+                {% else %}
+                <h3 class="text-sm font-semibold text-slate-400 italic">No payouts logged</h3>
+                {% endif %}
+                <div class="flex items-center space-x-3 text-[11px] text-slate-400 mt-2 font-mono border-t border-slate-800/60 pt-2">
+                    <span>Div: <strong class="text-emerald-400">{{ total_dividends | currency('INR') }}</strong></span>
+                    <span>Int: <strong class="text-indigo-400">{{ total_interest | currency('INR') }}</strong></span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- BREAKDOWN VIEWS SECTION -->
+    {% if period_type == 'monthly' %}
+    <!-- MONTHLY CATEGORY BREAKDOWN -->
+    <div class="apple-card rounded-3xl p-6 space-y-4">
+        <h3 class="font-bold text-base text-white">Income Breakdown by Category &amp; Asset</h3>
+        {% if category_flows %}
+        <div class="space-y-3">
+            {% for cat in category_flows %}
+            <div class="bg-slate-950/60 border border-slate-800/80 rounded-2xl p-4 space-y-3">
+                <div class="flex items-center justify-between cursor-pointer" onclick="document.getElementById('cat-assets-{{ loop.index }}').classList.toggle('hidden')">
+                    <div class="flex items-center space-x-2">
+                        <i class="fa-solid fa-chevron-down text-xs text-slate-500 transition-transform"></i>
+                        <span class="font-bold text-sm text-white">{{ cat.category_name }}</span>
+                        <span class="px-2 py-0.5 bg-slate-900 border border-slate-800 text-slate-400 text-[10px] font-mono font-semibold rounded-md">
+                            {{ cat.count }} payout{% if cat.count != 1 %}s{% endif %}
+                        </span>
+                    </div>
+                    <span class="font-extrabold text-sm text-emerald-400 font-mono">{{ cat.total_income | currency('INR') }}</span>
+                </div>
+
+                <!-- Asset Breakdown Rows -->
+                <div id="cat-assets-{{ loop.index }}" class="pl-4 border-l-2 border-indigo-500/30 space-y-2 pt-1">
+                    {% for af in cat.asset_flows %}
+                    <div class="flex items-center justify-between text-xs py-1 border-b border-slate-900/60 last:border-0">
+                        <span class="text-slate-300 font-medium">{{ af.name }}</span>
+                        <div class="flex items-center space-x-3 font-mono">
+                            <span class="text-slate-400 text-[11px]">{{ af.count }} receipt{% if af.count != 1 %}s{% endif %}</span>
+                            <span class="font-bold text-slate-200">{{ af.total_income | currency('INR') }}</span>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="py-8 text-center text-slate-500 text-xs italic">
+            No passive income payouts logged for {{ selected_month }}/{{ selected_year }}.
+        </div>
+        {% endif %}
+    </div>
+
+    {% elif period_type == 'yearly' %}
+    <!-- YEARLY MONTHLY MATRIX GRID -->
+    <div class="apple-card rounded-3xl p-6 space-y-4">
+        <h3 class="font-bold text-base text-white">Yearly Income Matrix ({{ selected_year }})</h3>
+        {% if yearly_matrix %}
+        <div class="overflow-x-auto">
+            <table class="w-full text-left text-xs font-mono border-collapse">
+                <thead>
+                    <tr class="bg-slate-950/60 border-b border-slate-800 font-bold uppercase tracking-wider text-slate-400 text-[10px]">
+                        <th class="py-3 px-3 font-sans">Category / Asset</th>
+                        <th class="py-3 px-2 text-right">Jan</th>
+                        <th class="py-3 px-2 text-right">Feb</th>
+                        <th class="py-3 px-2 text-right">Mar</th>
+                        <th class="py-3 px-2 text-right">Apr</th>
+                        <th class="py-3 px-2 text-right">May</th>
+                        <th class="py-3 px-2 text-right">Jun</th>
+                        <th class="py-3 px-2 text-right">Jul</th>
+                        <th class="py-3 px-2 text-right">Aug</th>
+                        <th class="py-3 px-2 text-right">Sep</th>
+                        <th class="py-3 px-2 text-right">Oct</th>
+                        <th class="py-3 px-2 text-right">Nov</th>
+                        <th class="py-3 px-2 text-right">Dec</th>
+                        <th class="py-3 px-3 text-right">Total</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-800/60">
+                    {% for row in yearly_matrix %}
+                    <tr class="bg-slate-900/40 font-bold text-white">
+                        <td class="py-3 px-3 font-sans text-indigo-300">{{ row.category_name }}</td>
+                        {% for m in range(1, 13) %}
+                        <td class="py-3 px-2 text-right text-slate-300">{% if row.monthly[m] > 0 %}₹{{ "%.0f"|format(row.monthly[m]) }}{% else %}&ndash;{% endif %}</td>
+                        {% endfor %}
+                        <td class="py-3 px-3 text-right text-emerald-400 font-extrabold">{{ row.total | currency('INR') }}</td>
+                    </tr>
+                    {% for a in row.assets %}
+                    <tr class="hover:bg-slate-800/30 text-slate-400 text-[11px]">
+                        <td class="py-2 px-3 font-sans pl-6 truncate max-w-[150px]">{{ a.name }}</td>
+                        {% for m in range(1, 13) %}
+                        <td class="py-2 px-2 text-right">{% if a.monthly[m] > 0 %}₹{{ "%.0f"|format(a.monthly[m]) }}{% else %}&ndash;{% endif %}</td>
+                        {% endfor %}
+                        <td class="py-2 px-3 text-right font-bold text-slate-200">₹{{ "%.0f"|format(a.total) }}</td>
+                    </tr>
+                    {% endfor %}
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="py-8 text-center text-slate-500 text-xs italic">
+            No passive income payouts logged for {{ selected_year }}.
+        </div>
+        {% endif %}
+    </div>
+
+    {% else %}
+    <!-- LIFETIME YEARLY MATRIX GRID -->
+    <div class="apple-card rounded-3xl p-6 space-y-4">
+        <h3 class="font-bold text-base text-white">Lifetime Income Matrix Growth</h3>
+        {% if lifetime_matrix %}
+        <div class="overflow-x-auto">
+            <table class="w-full text-left text-xs font-mono border-collapse">
+                <thead>
+                    <tr class="bg-slate-950/60 border-b border-slate-800 font-bold uppercase tracking-wider text-slate-400 text-[10px]">
+                        <th class="py-3 px-3 font-sans">Category / Asset</th>
+                        {% for y in lifetime_years %}
+                        <th class="py-3 px-2 text-right">{{ y }}</th>
+                        {% endfor %}
+                        <th class="py-3 px-3 text-right">Lifetime Total</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-800/60">
+                    {% for row in lifetime_matrix %}
+                    <tr class="bg-slate-900/40 font-bold text-white">
+                        <td class="py-3 px-3 font-sans text-indigo-300">{{ row.category_name }}</td>
+                        {% for y in lifetime_years %}
+                        <td class="py-3 px-2 text-right text-slate-300">{% if row.yearly[y] > 0 %}₹{{ "%.0f"|format(row.yearly[y]) }}{% else %}&ndash;{% endif %}</td>
+                        {% endfor %}
+                        <td class="py-3 px-3 text-right text-emerald-400 font-extrabold">{{ row.total | currency('INR') }}</td>
+                    </tr>
+                    {% for a in row.assets %}
+                    <tr class="hover:bg-slate-800/30 text-slate-400 text-[11px]">
+                        <td class="py-2 px-3 font-sans pl-6 truncate max-w-[150px]">{{ a.name }}</td>
+                        {% for y in lifetime_years %}
+                        <td class="py-2 px-2 text-right">{% if a.yearly[y] > 0 %}₹{{ "%.0f"|format(a.yearly[y]) }}{% else %}&ndash;{% endif %}</td>
+                        {% endfor %}
+                        <td class="py-2 px-3 text-right font-bold text-slate-200">₹{{ "%.0f"|format(a.total) }}</td>
+                    </tr>
+                    {% endfor %}
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="py-8 text-center text-slate-500 text-xs italic">
+            No passive income payouts logged across portfolio lifetime.
+        </div>
+        {% endif %}
+    </div>
+    {% endif %}
+
+    <!-- INCOME TRANSACTION HISTORY TABLE -->
+    <div class="apple-card rounded-3xl p-6 space-y-4">
+        <div class="flex items-center justify-between">
+            <h3 class="font-bold text-base text-white">Income Payout History</h3>
+            <button onclick="document.getElementById('addTxModal').classList.remove('hidden')" class="text-xs font-semibold text-indigo-400 hover:text-indigo-300 transition">
+                + Log Payout
+            </button>
+        </div>
+
+        <div class="overflow-x-auto">
+            <table data-paginate="10" class="w-full text-left text-xs border-collapse">
+                <thead>
+                    <tr class="bg-slate-950/60 border-b border-slate-800 font-bold uppercase tracking-wider text-slate-400 text-[10px]">
+                        <th class="py-3 px-3">Type</th>
+                        <th class="py-3 px-3">Date</th>
+                        <th class="py-3 px-3">Asset</th>
+                        <th class="py-3 px-3">Category</th>
+                        <th class="py-3 px-3 text-right">Payout Amount</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-800/60 font-mono">
+                    {% for item in period_txs %}
+                    <tr onclick="openEditTxModal({id: {{ item.tx.id }}, type: '{{ item.tx.type }}', raw_type: '{{ item.tx.raw_type }}', date: '{{ item.tx.date.strftime('%Y-%m-%d') if item.tx.date else '' }}', units: {{ item.tx.units }}, price_per_unit: {{ item.tx.price_per_unit }}, broker_id: '{{ item.tx.broker_id or '' }}', notes: '{{ item.tx.notes or '' }}'})" class="hover:bg-slate-800/40 cursor-pointer transition">
+                        <td class="py-3 px-3 font-sans font-semibold text-white">
+                            <span class="px-2 py-0.5 bg-amber-500/15 text-amber-300 border border-amber-500/30 text-[10px] font-bold rounded-md uppercase">
+                                {{ item.tx.raw_type }}
+                            </span>
+                        </td>
+                        <td class="py-3 px-3 text-slate-300">{{ item.tx.date.strftime('%Y-%m-%d') if item.tx.date else '' }}</td>
+                        <td class="py-3 px-3 font-sans text-white font-medium">{{ item.tx.asset_name }}</td>
+                        <td class="py-3 px-3 font-sans text-slate-400">{{ item.tx.category_name }}</td>
+                        <td class="py-3 px-3 text-right font-bold text-emerald-400">{{ item.amount_inr | currency('INR') }}</td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="5" class="py-6 text-center text-slate-500 font-sans">No income transactions found for selected filter.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+</div>
+
+<!-- CATEGORY PASSIVE RULES MODAL -->
+<div id="categoryRulesModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
+    <div class="bg-slate-900 border border-slate-800 rounded-3xl w-full max-w-lg p-6 shadow-2xl space-y-4">
+        <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+            <h3 class="font-bold text-base text-white flex items-center space-x-2">
+                <i class="fa-solid fa-sliders text-indigo-400 text-sm"></i>
+                <span>Configure Category Passive Income Rules</span>
+            </h3>
+            <button onclick="document.getElementById('categoryRulesModal').classList.add('hidden')" class="text-slate-400 hover:text-white">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+        </div>
+
+        <p class="text-xs text-slate-400 leading-relaxed">
+            Select a category below to configure which transaction types count as passive income. Employer contributions, deposits, and buy/sell capital returns are automatically excluded.
+        </p>
+
+        <form id="rulesForm" method="POST" action="" class="space-y-4 text-xs">
+            <div>
+                <label class="block font-semibold text-slate-300 mb-1">Select Category</label>
+                <select id="rules_cat_select" onchange="loadCatRules(this.value)" class="w-full bg-slate-950 border border-slate-800 text-white rounded-xl p-2.5 font-semibold focus:border-indigo-500">
+                    {% for c in categories %}
+                    <option value="{{ c.id }}" data-rules="{{ c.passive_transaction_types_raw }}">{{ c.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="space-y-2 bg-slate-950/60 p-4 rounded-2xl border border-slate-800">
+                <label class="block font-semibold text-slate-300">Allowed Passive Income Types</label>
+                <div class="grid grid-cols-2 gap-2.5 pt-1">
+                    <label class="flex items-center space-x-2 p-2 bg-slate-900 rounded-xl border border-slate-800/80 cursor-pointer">
+                        <input type="checkbox" name="passive_types" value="DIVIDEND" class="cat-rule-cb rounded bg-slate-950 border-slate-800 text-indigo-600 focus:ring-0">
+                        <span class="text-slate-200 font-semibold">DIVIDEND</span>
+                    </label>
+                    <label class="flex items-center space-x-2 p-2 bg-slate-900 rounded-xl border border-slate-800/80 cursor-pointer">
+                        <input type="checkbox" name="passive_types" value="INTEREST" class="cat-rule-cb rounded bg-slate-950 border-slate-800 text-indigo-600 focus:ring-0">
+                        <span class="text-slate-200 font-semibold">INTEREST</span>
+                    </label>
+                    <label class="flex items-center space-x-2 p-2 bg-slate-900 rounded-xl border border-slate-800/80 cursor-pointer">
+                        <input type="checkbox" name="passive_types" value="BONUS" class="cat-rule-cb rounded bg-slate-950 border-slate-800 text-indigo-600 focus:ring-0">
+                        <span class="text-slate-200 font-semibold">BONUS</span>
+                    </label>
+                    <label class="flex items-center space-x-2 p-2 bg-slate-900 rounded-xl border border-slate-800/80 cursor-pointer">
+                        <input type="checkbox" name="passive_types" value="SURVIVAL_BENEFIT" class="cat-rule-cb rounded bg-slate-950 border-slate-800 text-indigo-600 focus:ring-0">
+                        <span class="text-slate-200 font-semibold">SURVIVAL BENEFIT</span>
+                    </label>
+                    <label class="flex items-center space-x-2 p-2 bg-slate-900 rounded-xl border border-slate-800/80 cursor-pointer">
+                        <input type="checkbox" name="passive_types" value="COUPON" class="cat-rule-cb rounded bg-slate-950 border-slate-800 text-indigo-600 focus:ring-0">
+                        <span class="text-slate-200 font-semibold">COUPON</span>
+                    </label>
+                    <label class="flex items-center space-x-2 p-2 bg-slate-900 rounded-xl border border-slate-800/80 cursor-pointer">
+                        <input type="checkbox" name="passive_types" value="RENT" class="cat-rule-cb rounded bg-slate-950 border-slate-800 text-indigo-600 focus:ring-0">
+                        <span class="text-slate-200 font-semibold">RENTAL INCOME</span>
+                    </label>
+                </div>
+            </div>
+
+            <div class="pt-3 border-t border-slate-800 flex justify-end space-x-2">
+                <button type="button" onclick="document.getElementById('categoryRulesModal').classList.add('hidden')" class="px-4 py-2 bg-slate-800 text-slate-300 rounded-xl font-semibold hover:bg-slate-700">Cancel</button>
+                <button type="submit" class="px-4 py-2 bg-indigo-600 text-white rounded-xl font-semibold hover:bg-indigo-500 shadow-md shadow-indigo-600/30">Save Rules</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- EDIT TRANSACTION MODAL -->
+<div id="editTxModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
+    <div class="bg-slate-900 border border-slate-800 rounded-3xl w-full max-w-md p-6 shadow-2xl space-y-4">
+        <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+            <h3 class="font-bold text-base text-white flex items-center space-x-2">
+                <i class="fa-solid fa-pen-to-square text-indigo-400 text-sm"></i>
+                <span>Edit Income Payout</span>
+            </h3>
+            <button onclick="document.getElementById('editTxModal').classList.add('hidden')" class="text-slate-400 hover:text-white">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+        </div>
+        <form id="editTxForm" method="POST" action="" class="space-y-3 text-xs">
+            <input type="hidden" id="edit_tx_id" name="tx_id" value="">
+            
+            <div class="grid grid-cols-2 gap-3">
+                <div>
+                    <label class="block font-semibold text-slate-300 mb-1">Transaction Type</label>
+                    <select id="edit_tx_type" name="type" required class="w-full bg-slate-950 border border-slate-800 text-white rounded-xl p-2.5">
+                        <option value="DIVIDEND">DIVIDEND</option>
+                        <option value="INTEREST">INTEREST</option>
+                        <option value="BONUS">BONUS</option>
+                        <option value="SURVIVAL_BENEFIT">SURVIVAL BENEFIT</option>
+                        <option value="COUPON">COUPON</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block font-semibold text-slate-300 mb-1">Date</label>
+                    <input type="date" id="edit_tx_date" name="date" required class="w-full bg-slate-950 border border-slate-800 text-white rounded-xl p-2.5">
+                </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-3">
+                <div>
+                    <label class="block font-semibold text-slate-300 mb-1">Payout Amount (₹)</label>
+                    <input type="number" step="any" id="edit_tx_price" name="price_per_unit" required class="w-full bg-slate-950 border border-slate-800 text-white rounded-xl p-2.5">
+                </div>
+                <div>
+                    <label class="block font-semibold text-slate-300 mb-1">Broker / Bank</label>
+                    <select id="edit_tx_broker_id" name="broker_id" class="w-full bg-slate-950 border border-slate-800 text-white rounded-xl p-2.5">
+                        <option value="">None</option>
+                        {% for b in brokers %}
+                        <option value="{{ b.id }}">{{ b.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+
+            <div>
+                <label class="block font-semibold text-slate-300 mb-1">Notes</label>
+                <input type="text" id="edit_tx_notes" name="notes" placeholder="Optional notes" class="w-full bg-slate-950 border border-slate-800 text-white rounded-xl p-2.5">
+            </div>
+
+            <div class="pt-3 border-t border-slate-800 flex items-center justify-between">
+                <button type="button" onclick="deleteCurrentTx()" class="px-4 py-2 bg-rose-600/90 hover:bg-rose-500 text-white rounded-xl font-semibold transition shadow-md shadow-rose-600/20 flex items-center space-x-1.5">
+                    <i class="fa-solid fa-trash text-xs"></i>
+                    <span>Delete</span>
+                </button>
+
+                <div class="flex items-center space-x-2">
+                    <button type="button" onclick="document.getElementById('editTxModal').classList.add('hidden')" class="px-4 py-2 bg-slate-800 text-slate-300 rounded-xl font-semibold hover:bg-slate-700">Cancel</button>
+                    <button type="submit" class="px-4 py-2 bg-indigo-600 text-white rounded-xl font-semibold hover:bg-indigo-500 shadow-md shadow-indigo-600/30">Save Changes</button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- ADD TRADE MODAL -->
+<div id="addTxModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
+    <div class="bg-slate-900 border border-slate-800 rounded-3xl w-full max-w-md p-6 shadow-2xl space-y-4">
+        <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+            <h3 class="font-bold text-base text-white">Log Income Payout</h3>
+            <button onclick="document.getElementById('addTxModal').classList.add('hidden')" class="text-slate-400 hover:text-white">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+        </div>
+
+        <form method="POST" action="{{ url_for('transactions.add_transaction') }}" class="space-y-3 text-xs">
+            <div>
+                <label class="block font-semibold text-slate-300 mb-1">Asset</label>
+                <select name="asset_id" required class="w-full bg-slate-950 border border-slate-800 text-white rounded-xl p-2.5">
+                    {% for a in all_assets %}
+                    <option value="{{ a.id }}">{{ a.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="grid grid-cols-2 gap-3">
+                <div>
+                    <label class="block font-semibold text-slate-300 mb-1">Transaction Type</label>
+                    <select name="type" required class="w-full bg-slate-950 border border-slate-800 text-white rounded-xl p-2.5">
+                        <option value="DIVIDEND">DIVIDEND</option>
+                        <option value="INTEREST">INTEREST</option>
+                        <option value="BONUS">BONUS</option>
+                        <option value="SURVIVAL_BENEFIT">SURVIVAL BENEFIT</option>
+                        <option value="COUPON">COUPON</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block font-semibold text-slate-300 mb-1">Date</label>
+                    <input type="date" name="date" required value="{{ current_year }}-{{ '%.2d'|format(selected_month) }}-01" class="w-full bg-slate-950 border border-slate-800 text-white rounded-xl p-2.5">
+                </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-3">
+                <div>
+                    <label class="block font-semibold text-slate-300 mb-1">Payout Amount (₹)</label>
+                    <input type="number" step="any" name="price_per_unit" required class="w-full bg-slate-950 border border-slate-800 text-white rounded-xl p-2.5">
+                </div>
+                <div>
+                    <label class="block font-semibold text-slate-300 mb-1">Broker / Bank</label>
+                    <select name="broker_id" class="w-full bg-slate-950 border border-slate-800 text-white rounded-xl p-2.5">
+                        <option value="">None</option>
+                        {% for b in brokers %}
+                        <option value="{{ b.id }}">{{ b.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+
+            <div>
+                <label class="block font-semibold text-slate-300 mb-1">Notes</label>
+                <input type="text" name="notes" placeholder="Optional notes" class="w-full bg-slate-950 border border-slate-800 text-white rounded-xl p-2.5">
+            </div>
+
+            <div class="pt-3 border-t border-slate-800 flex justify-end space-x-2">
+                <button type="button" onclick="document.getElementById('addTxModal').classList.add('hidden')" class="px-4 py-2 bg-slate-800 text-slate-300 rounded-xl font-semibold hover:bg-slate-700">Cancel</button>
+                <button type="submit" class="px-4 py-2 bg-indigo-600 text-white rounded-xl font-semibold hover:bg-indigo-500 shadow-md shadow-indigo-600/30">Save Payout</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    function loadCatRules(catId) {
+        const select = document.getElementById('rules_cat_select');
+        const option = select.options[select.selectedIndex];
+        const raw = option.getAttribute('data-rules') || '';
+
+        document.getElementById('rulesForm').action = '/categories/update-passive-rules/' + catId;
+
+        const rulesSet = new Set(raw.split('|||').map(s => s.trim().toUpperCase()));
+        document.querySelectorAll('.cat-rule-cb').forEach(cb => {
+            if (raw === '') {
+                cb.checked = true; // default all checked
+            } else {
+                cb.checked = rulesSet.has(cb.value);
+            }
+        });
+    }
+
+    function openEditTxModal(tx) {
+        if (!tx) return;
+        document.getElementById('edit_tx_id').value = tx.id;
+        document.getElementById('edit_tx_type').value = tx.raw_type || tx.type || 'DIVIDEND';
+        document.getElementById('edit_tx_date').value = tx.date ? tx.date.split('T')[0] : '';
+        document.getElementById('edit_tx_price').value = tx.price_per_unit || 0;
+        document.getElementById('edit_tx_broker_id').value = tx.broker_id || '';
+        document.getElementById('edit_tx_notes').value = tx.notes || '';
+
+        document.getElementById('editTxForm').action = '/transactions/edit/' + tx.id;
+        document.getElementById('editTxModal').classList.remove('hidden');
+    }
+
+    async function deleteCurrentTx() {
+        const txId = document.getElementById('edit_tx_id').value;
+        if (!txId) return;
+        if (!confirm('Are you sure you want to delete this income payout entry?')) return;
+
+        try {
+            const res = await fetch('/transactions/delete/' + txId, {
+                method: 'POST',
+                headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' }
+            });
+            await res.json();
+            document.getElementById('editTxModal').classList.add('hidden');
+            if (typeof loadSpaPage === 'function') {
+                loadSpaPage(window.location.href, false);
+            } else {
+                window.location.reload();
+            }
+        } catch (err) {
+            console.error('Delete transaction error:', err);
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        const sel = document.getElementById('rules_cat_select');
+        if (sel) loadCatRules(sel.value);
+    });
+</script>
+{% endblock %}

@@ -1,0 +1,137 @@
+{% extends "base.html" %}
+
+{% block title %}Export & Database Management — iPortfolioTracker{% endblock %}
+{% block header_title %}Database Management & Export{% endblock %}
+
+{% block content %}
+<div class="space-y-6 max-w-4xl">
+
+    <!-- Active DB Location Info Bar -->
+    <div class="bg-indigo-950/40 border border-indigo-500/30 rounded-2xl p-5 glass-panel">
+        <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div class="space-y-1">
+                <div class="flex items-center space-x-2">
+                    <i class="fa-solid fa-hard-drive text-indigo-400 text-sm"></i>
+                    <h3 class="font-bold text-sm text-white">Active Database Location</h3>
+                </div>
+                <p class="text-xs text-slate-400">The application is currently reading and storing all data in this SQLite database file:</p>
+                <div class="mt-2 bg-slate-950/80 border border-slate-800 rounded-xl px-3 py-2 font-mono text-[11px] text-indigo-300 break-all select-all flex items-center justify-between">
+                    <span>{{ db_path }}</span>
+                    {% if db_exists %}
+                    <span class="ml-2 px-2 py-0.5 rounded-md bg-emerald-950/80 border border-emerald-500/30 text-emerald-400 text-[10px] font-sans font-semibold shrink-0">
+                        Active ({{ db_size_mb }} MB)
+                    </span>
+                    {% else %}
+                    <span class="ml-2 px-2 py-0.5 rounded-md bg-rose-950/80 border border-rose-500/30 text-rose-400 text-[10px] font-sans font-semibold shrink-0">
+                        Not Found
+                    </span>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- SQLite Database Backup & Restore Card -->
+    <div class="bg-slate-900/80 border border-slate-800 rounded-2xl p-6 glass-panel space-y-6">
+        <div>
+            <div class="flex items-center space-x-2">
+                <i class="fa-solid fa-database text-indigo-400"></i>
+                <h3 class="font-bold text-base text-white">SQLite Database Export & Import</h3>
+            </div>
+            <p class="text-xs text-slate-400 mt-1">Export your entire database file for backup, or blindly import a database file to overwrite the current application contents.</p>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 text-xs">
+
+            <!-- Export DB Card -->
+            <div class="p-5 bg-slate-950/60 border border-slate-800 rounded-xl flex flex-col justify-between space-y-4">
+                <div class="space-y-2">
+                    <div class="flex items-center space-x-2 text-indigo-400 font-bold text-sm">
+                        <i class="fa-solid fa-file-arrow-down"></i>
+                        <h4>Export Database File (.db)</h4>
+                    </div>
+                    <p class="text-slate-400 text-[11px] leading-relaxed">
+                        Download the full SQLite database (<span class="font-mono text-indigo-300">PortfolioTrackerBackup.db</span>). Contains all assets, transactions, categories, reminders, notes, and user settings.
+                    </p>
+                </div>
+                <div class="pt-2">
+                    <a href="{{ url_for('export.download_db') }}" class="inline-flex items-center justify-center space-x-2 w-full px-4 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs rounded-xl shadow-md transition">
+                        <i class="fa-solid fa-download"></i>
+                        <span>Export Database File (.db)</span>
+                    </a>
+                </div>
+            </div>
+
+            <!-- Import DB Card -->
+            <div class="p-5 bg-slate-950/60 border border-slate-800 rounded-xl space-y-4">
+                <div class="space-y-2">
+                    <div class="flex items-center space-x-2 text-amber-400 font-bold text-sm">
+                        <i class="fa-solid fa-file-arrow-up"></i>
+                        <h4>Import Database File (.db)</h4>
+                    </div>
+                    <p class="text-slate-400 text-[11px] leading-relaxed">
+                        Select a SQLite <span class="font-mono text-amber-300">.db</span> file. Uploading will <strong class="text-amber-300">blindly replace and overwrite</strong> the current active database file on disk.
+                    </p>
+                </div>
+
+                <form action="{{ url_for('export.import_db') }}" method="POST" enctype="multipart/form-data" data-no-spa="true" class="space-y-3">
+                    <div class="space-y-1.5">
+                        <label class="block text-[11px] font-semibold text-slate-300">Select .db file to import:</label>
+                        <input type="file" name="db_file" accept=".db,.sqlite,.sqlite3" required
+                               class="w-full text-xs text-slate-300 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-slate-800 file:text-indigo-300 hover:file:bg-slate-700 bg-slate-900 border border-slate-700/80 rounded-xl p-1 cursor-pointer">
+                    </div>
+
+                    <div class="p-2.5 bg-amber-950/40 border border-amber-500/30 rounded-xl text-[11px] text-amber-300 flex items-start space-x-2">
+                        <i class="fa-solid fa-triangle-exclamation text-amber-400 mt-0.5 shrink-0"></i>
+                        <span><strong>Warning:</strong> Existing data will be completely overwritten with the imported file. Make sure to export a backup beforehand if needed.</span>
+                    </div>
+
+                    <button type="submit" onclick="return confirm('Are you sure you want to blindly replace the database? Existing data will be overwritten.')" 
+                            class="inline-flex items-center justify-center space-x-2 w-full px-4 py-2.5 bg-amber-600 hover:bg-amber-500 text-white font-bold text-xs rounded-xl shadow-md transition">
+                        <i class="fa-solid fa-upload"></i>
+                        <span>Import & Blindly Replace DB</span>
+                    </button>
+                </form>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- CSV Data Export Card -->
+    <div class="bg-slate-900/80 border border-slate-800 rounded-2xl p-6 glass-panel space-y-4">
+        <div>
+            <div class="flex items-center space-x-2">
+                <i class="fa-solid fa-file-csv text-indigo-400"></i>
+                <h3 class="font-bold text-base text-white">CSV Data Export</h3>
+            </div>
+            <p class="text-xs text-slate-400 mt-1">Download holdings or transaction history in standard CSV format for Excel, Google Sheets, or tax reporting.</p>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs pt-2">
+            <div class="p-4 bg-slate-950/60 border border-slate-800 rounded-xl space-y-3 flex flex-col justify-between">
+                <div class="space-y-1">
+                    <h4 class="font-bold text-sm text-white">Transactions CSV</h4>
+                    <p class="text-slate-400 text-[11px]">Includes all Buy, Sell, Dividend, and Deposit records with units, prices, brokers, and notes.</p>
+                </div>
+                <a href="{{ url_for('export.export_csv', type_str='transactions') }}" class="inline-flex items-center justify-center space-x-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs rounded-xl shadow-md transition">
+                    <i class="fa-solid fa-download text-[10px]"></i>
+                    <span>Export Transactions CSV</span>
+                </a>
+            </div>
+
+            <div class="p-4 bg-slate-950/60 border border-slate-800 rounded-xl space-y-3 flex flex-col justify-between">
+                <div class="space-y-1">
+                    <h4 class="font-bold text-sm text-white">Assets CSV</h4>
+                    <p class="text-slate-400 text-[11px]">Includes all assets, tickers, categories, current prices, and holding types.</p>
+                </div>
+                <a href="{{ url_for('export.export_csv', type_str='assets') }}" class="inline-flex items-center justify-center space-x-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs rounded-xl shadow-md transition">
+                    <i class="fa-solid fa-download text-[10px]"></i>
+                    <span>Export Assets CSV</span>
+                </a>
+            </div>
+        </div>
+    </div>
+
+</div>
+{% endblock %}
+

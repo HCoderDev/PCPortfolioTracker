@@ -1,0 +1,975 @@
+{% extends "base.html" %}
+
+{% block title %}{{ asset.name }} — Contract Asset Detail{% endblock %}
+{% block header_title %}{{ asset.name }} Detail{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+
+    <!-- BREADCRUMB NAVIGATION -->
+    <nav class="flex items-center space-x-2 text-xs font-semibold text-slate-400" aria-label="Breadcrumb">
+        <a href="{{ url_for('dashboard.index') }}" class="hover:text-indigo-400 transition flex items-center space-x-1.5">
+            <i class="fa-solid fa-house text-[11px]"></i>
+            <span>Overview</span>
+        </a>
+        <span class="text-slate-600 font-bold">&rsaquo;</span>
+        <a href="{{ url_for('categories.list_categories') }}" class="hover:text-indigo-400 transition">Categories</a>
+        {% if category %}
+        <span class="text-slate-600 font-bold">&rsaquo;</span>
+        <a href="{{ url_for('categories.category_detail', cat_id=category.id) }}" class="hover:text-indigo-400 transition">{{ category.name }}</a>
+        {% endif %}
+        <span class="text-slate-600 font-bold">&rsaquo;</span>
+        <span class="text-white font-bold truncate max-w-[250px]">{{ asset.name }}</span>
+    </nav>
+
+    <!-- HEADER SECTION & STATUS -->
+    <div class="apple-card rounded-3xl p-6 relative overflow-hidden">
+        <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div>
+                <div class="flex items-center space-x-3 flex-wrap gap-y-2">
+                    <h2 class="text-2xl md:text-3xl font-extrabold text-white tracking-tight">{{ asset.name }}</h2>
+                    <span class="px-2.5 py-1 bg-amber-500/15 border border-amber-500/30 text-amber-300 font-mono text-xs font-bold rounded-xl uppercase">
+                        {{ asset.holding_type }}
+                    </span>
+                    <span class="px-2.5 py-1 text-xs font-bold rounded-xl {% if is_sold_off %}bg-slate-800 text-slate-400 border border-slate-700{% else %}bg-emerald-500/15 text-emerald-300 border border-emerald-500/30{% endif %}">
+                        {% if is_sold_off %}COMPLETED / MATURED{% else %}ACTIVE POLICY{% endif %}
+                    </span>
+                </div>
+                {% if asset.institution_name %}
+                <p class="text-xs text-slate-400 mt-1.5 font-medium">{{ asset.institution_name }}</p>
+                {% endif %}
+            </div>
+
+            <div class="flex items-center space-x-3 shrink-0">
+                <button onclick="document.getElementById('updateBalanceModal').classList.remove('hidden')" class="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-xl shadow-lg shadow-emerald-600/30 transition flex items-center space-x-1.5">
+                    <i class="fa-solid fa-wallet text-xs"></i>
+                    <span>Update Balance</span>
+                </button>
+                <button onclick="document.getElementById('addTxModal').classList.remove('hidden')" class="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs rounded-xl shadow-lg shadow-indigo-600/30 transition flex items-center space-x-1.5">
+                    <i class="fa-solid fa-plus text-xs"></i>
+                    <span>Add Entry</span>
+                </button>
+                <button onclick="document.getElementById('editAssetModal').classList.remove('hidden')" class="px-3.5 py-2.5 bg-slate-800/80 hover:bg-slate-700/80 text-slate-200 font-semibold text-xs rounded-xl border border-slate-700/60 transition flex items-center space-x-1.5">
+                    <i class="fa-solid fa-gear text-xs"></i>
+                    <span>Settings</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- PRIMARY HERO METRICS DASHBOARD -->
+    <div class="apple-card rounded-3xl p-6">
+        <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div>
+                <p class="text-xs font-semibold uppercase tracking-widest text-slate-400">
+                    {% if is_sold_off %}Final Settled Valuation{% else %}Current Account Valuation / Balance{% endif %}
+                </p>
+                <div class="flex items-center space-x-3 mt-1">
+                    <h3 class="text-3xl md:text-4xl font-extrabold text-white font-sans">
+                        {{ val_inr | currency('INR') }}
+                    </h3>
+                    <button onclick="document.getElementById('updateBalanceModal').classList.remove('hidden')" title="Update Current Balance" class="px-2.5 py-1 text-xs bg-indigo-600/20 text-indigo-300 hover:bg-indigo-600 hover:text-white border border-indigo-500/30 rounded-xl transition font-sans font-semibold flex items-center space-x-1">
+                        <i class="fa-solid fa-pen-to-square text-[11px]"></i>
+                        <span>Update</span>
+                    </button>
+                </div>
+            </div>
+
+            <div class="md:text-right">
+                <div class="flex items-center md:justify-end space-x-2">
+                    <span class="text-xs font-semibold uppercase tracking-widest text-slate-400">XIRR Return</span>
+                    <div class="text-[10px] bg-slate-900 border border-slate-800 p-0.5 rounded-lg flex space-x-1">
+                        <a href="{{ url_for('assets.asset_detail', asset_id=asset.id, xirr_mode='lifetime') }}" class="px-2 py-0.5 rounded {% if xirr_mode=='lifetime' %}bg-indigo-600 text-white font-bold{% else %}text-slate-400 hover:text-white{% endif %}">Lifetime</a>
+                        <a href="{{ url_for('assets.asset_detail', asset_id=asset.id, xirr_mode='active') }}" class="px-2 py-0.5 rounded {% if xirr_mode=='active' %}bg-indigo-600 text-white font-bold{% else %}text-slate-400 hover:text-white{% endif %}">Active</a>
+                    </div>
+                </div>
+                <p class="text-2xl font-extrabold font-mono mt-0.5 {% if xirr_val and xirr_val >= 0 %}text-emerald-400{% else %}text-rose-400{% endif %}">
+                    {% if xirr_val is not none %}{{ "%.2f"|format(xirr_val) }}%{% else %}N/A{% endif %}
+                </p>
+            </div>
+        </div>
+
+        <div class="my-4 border-t border-slate-800/60"></div>
+
+        <div class="grid grid-cols-2 gap-4 text-xs">
+            <div>
+                <p class="text-slate-400 font-medium">Capital Invested</p>
+                <p class="text-sm font-bold text-slate-200 font-mono mt-0.5">{{ inv_inr | currency('INR') }}</p>
+            </div>
+            <div class="text-right">
+                <p class="text-slate-400 font-medium">Total Interest / Returns</p>
+                <p class="text-sm font-bold text-emerald-400 font-mono mt-0.5">+{{ interest_accrued | currency('INR') }}</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- CONTRACT METADATA BANNER -->
+    {% if asset.interest_rate > 0 or asset.maturity_date or asset.policy_number or asset.premium_amount > 0 %}
+    <div class="apple-card rounded-2xl p-4">
+        <p class="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-3">Contract Metadata</p>
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-xs">
+            {% if asset.interest_rate > 0 %}
+            <div>
+                <p class="text-slate-400">Interest Rate</p>
+                <p class="font-bold text-white font-mono mt-0.5">{{ "%.2f"|format(asset.interest_rate) }}% p.a.</p>
+            </div>
+            {% endif %}
+
+            {% if asset.maturity_date %}
+            <div>
+                <p class="text-slate-400">Maturity Date</p>
+                <p class="font-bold text-white font-mono mt-0.5">{{ asset.maturity_date }}</p>
+            </div>
+            {% endif %}
+
+            {% if asset.policy_number %}
+            <div>
+                <p class="text-slate-400">Account / Policy #</p>
+                <p class="font-bold text-white font-mono mt-0.5 truncate">{{ asset.policy_number }}</p>
+            </div>
+            {% endif %}
+
+            {% if asset.premium_amount > 0 %}
+            <div>
+                <p class="text-slate-400">Regular Premium</p>
+                <p class="font-bold text-white font-mono mt-0.5">{{ asset.premium_amount | currency('INR') }}</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- SEGMENTED NAVIGATION TABS -->
+    <div class="bg-slate-900/90 p-1.5 rounded-2xl border border-slate-800 flex items-center justify-between overflow-x-auto gap-1">
+        <button onclick="switchTab('overview')" id="tab-overview" class="tab-btn px-4 py-2 text-xs font-bold rounded-xl transition-all bg-indigo-600 text-white shadow-sm shrink-0">
+            Overview
+        </button>
+        <button onclick="switchTab('transactions')" id="tab-transactions" class="tab-btn px-4 py-2 text-xs font-semibold rounded-xl transition-all text-slate-400 hover:text-slate-200 shrink-0">
+            Contract Entries ({{ transactions|length }})
+        </button>
+        <button onclick="switchTab('inflows')" id="tab-inflows" class="tab-btn px-4 py-2 text-xs font-semibold rounded-xl transition-all text-slate-400 hover:text-slate-200 shrink-0">
+            Inflows
+        </button>
+        <button onclick="switchTab('notes')" id="tab-notes" class="tab-btn px-4 py-2 text-xs font-semibold rounded-xl transition-all text-slate-400 hover:text-slate-200 shrink-0">
+            Notes ({{ notes|length }})
+        </button>
+        <button onclick="switchTab('reminders')" id="tab-reminders" class="tab-btn px-4 py-2 text-xs font-semibold rounded-xl transition-all text-slate-400 hover:text-slate-200 shrink-0">
+            Reminders ({{ reminders|length }})
+        </button>
+    </div>
+
+    <!-- TAB 1: OVERVIEW -->
+    <div id="content-overview" class="tab-content space-y-6">
+
+        <!-- Portfolio Allocations Card -->
+        <div class="apple-card rounded-3xl p-6">
+            <h3 class="font-semibold text-sm tracking-tight text-white mb-4">Portfolio Allocations</h3>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div class="bg-slate-900/60 p-4 rounded-2xl border border-slate-800/60">
+                    <p class="text-xs font-medium text-slate-400">Category Share</p>
+                    <p class="text-2xl font-extrabold text-indigo-400 font-mono mt-1">{{ "%.1f"|format(category_allocation_pct) }}%</p>
+                    <p class="text-[11px] text-slate-500 mt-0.5">of {{ category.name if category else 'Category' }}</p>
+                </div>
+                <div class="bg-slate-900/60 p-4 rounded-2xl border border-slate-800/60">
+                    <p class="text-xs font-medium text-slate-400">Net Worth Share</p>
+                    <p class="text-2xl font-extrabold text-blue-400 font-mono mt-1">{{ "%.1f"|format(networth_allocation_pct) }}%</p>
+                    <p class="text-[11px] text-slate-500 mt-0.5">of Total Net Worth</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Contract Inception & Recency -->
+        <div class="apple-card rounded-3xl p-6">
+            <h3 class="font-semibold text-sm tracking-tight text-white mb-4">Contract History &amp; Recency</h3>
+            <div class="space-y-4">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-xs font-medium text-slate-400">Last Contribution Date</p>
+                        <p class="text-base font-bold text-white font-mono mt-0.5">{{ last_invested_info.text }}</p>
+                    </div>
+                    <span class="px-3 py-1 text-xs font-bold rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400">
+                        {{ recency_status }}
+                    </span>
+                </div>
+
+                <div class="border-t border-slate-800/60"></div>
+
+                <div>
+                    <p class="text-xs font-medium text-slate-400">First Deposit / Contribution Date</p>
+                    <p class="text-sm font-semibold text-slate-200 font-mono mt-0.5">{{ inception_info.text }}</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Lifetime Cash Flow Card -->
+        <div class="apple-card rounded-3xl p-6">
+            <h3 class="font-semibold text-sm tracking-tight text-white mb-4">Lifetime Cash Flow</h3>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div class="bg-slate-900/60 p-4 rounded-2xl border border-slate-800/60">
+                    <p class="text-xs font-medium text-slate-400">Lifetime Invested</p>
+                    <p class="text-xl font-extrabold text-white font-mono mt-1">{{ lifetime_inv_inr | currency('INR') }}</p>
+                    <p class="text-[11px] text-slate-500 mt-0.5">Total Deposits</p>
+                </div>
+                <div class="bg-slate-900/60 p-4 rounded-2xl border border-slate-800/60">
+                    <p class="text-xs font-medium text-slate-400">Lifetime Retrieved</p>
+                    <p class="text-xl font-extrabold text-emerald-400 font-mono mt-1">{{ lifetime_ret_inr | currency('INR') }}</p>
+                    <p class="text-[11px] text-slate-500 mt-0.5">Payouts / Maturity</p>
+                </div>
+                <div class="bg-slate-900/60 p-4 rounded-2xl border border-slate-800/60">
+                    <p class="text-xs font-medium text-slate-400">Lifetime Interest / Dividends</p>
+                    <p class="text-xl font-extrabold text-amber-400 font-mono mt-1">{{ lifetime_div_inr | currency('INR') }}</p>
+                    <p class="text-[11px] text-slate-500 mt-0.5">Payouts Received</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Overall Performance Card -->
+        <div class="apple-card rounded-3xl p-6">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="font-semibold text-sm tracking-tight text-white">Overall Performance</h3>
+                <span class="text-xs font-mono font-semibold text-slate-400">Lifetime Return</span>
+            </div>
+            <div>
+                <p class="text-xs text-slate-400 font-medium">Overall Gain / Loss</p>
+                <p class="text-2xl font-extrabold font-mono mt-0.5 {% if total_gain_loss_inr >= 0 %}text-emerald-400{% else %}text-rose-400{% endif %}">
+                    {% if total_gain_loss_inr >= 0 %}+{% endif %}{{ total_gain_loss_inr | currency('INR') }} ({{ "%.2f"|format(overall_gain_loss_pct) }}%)
+                </p>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- TAB 2: TRANSACTIONS (CARD LEDGER FOR CONTRACTS) -->
+    <div id="content-transactions" class="tab-content hidden space-y-3">
+        <div class="flex items-center justify-between mb-2">
+            <h3 class="font-semibold text-sm tracking-tight text-white">Contract Entries</h3>
+            <button onclick="document.getElementById('addTxModal').classList.remove('hidden')" class="text-xs font-semibold text-indigo-400 hover:text-indigo-300 transition">
+                + Add Entry
+            </button>
+        </div>
+
+        {% if transactions %}
+        <div class="space-y-2.5">
+            {% for tx in transactions %}
+            <div onclick="openEditTxModal({id: {{ tx.id }}, type: '{{ tx.type }}', raw_type: '{{ tx.raw_type }}', date: '{{ tx.date.strftime('%Y-%m-%d') if tx.date else '' }}', units: {{ tx.units }}, price_per_unit: {{ tx.price_per_unit }}, broker_id: '{{ tx.broker_id or '' }}', notes: '{{ tx.notes or '' }}'})" class="apple-card rounded-2xl p-4 transition hover:border-indigo-500/50 flex items-center justify-between gap-4 cursor-pointer group">
+                <div class="flex items-center space-x-3.5 min-w-0">
+                    <div class="w-10 h-10 rounded-full flex items-center justify-center shrink-0 bg-indigo-500/15 text-indigo-400 border border-indigo-500/30">
+                        <i class="fa-solid fa-file-contract text-xs"></i>
+                    </div>
+                    <div class="min-w-0">
+                        <div class="flex items-center space-x-2">
+                            <h4 class="font-semibold text-sm text-white group-hover:text-indigo-300 transition">{{ tx.raw_type }}</h4>
+                            {% if tx.broker_name %}
+                            <span class="px-2 py-0.5 rounded text-[10px] font-semibold bg-slate-900 border border-slate-800 text-slate-300">
+                                <i class="fa-solid fa-building-columns text-[9px] mr-1 text-slate-400"></i>{{ tx.broker_name }}
+                            </span>
+                            {% endif %}
+                            <span class="text-[10px] text-indigo-400 font-semibold opacity-0 group-hover:opacity-100 transition">&bull; Click to edit/delete</span>
+                        </div>
+                        <p class="text-xs text-slate-400 mt-0.5 font-mono">{{ tx.date | date_fmt }} &middot; {{ tx.notes or 'Contract Transaction' }}</p>
+                    </div>
+                </div>
+
+                <div class="text-right shrink-0 font-mono font-bold text-sm text-white">
+                    {{ tx.price_per_unit | currency(category.currency_code if category else 'INR') }}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="apple-card rounded-2xl p-8 text-center text-slate-400 text-xs">
+            No contract entries recorded yet.
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- TAB 3: INFLOWS -->
+    <div id="content-inflows" class="tab-content hidden space-y-6">
+        <div class="apple-card rounded-3xl p-6 space-y-5">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <h3 class="font-semibold text-sm tracking-tight text-white">Contract Inflows &amp; Outflows Activity</h3>
+
+                <!-- Timeframe Selector -->
+                <div class="bg-slate-950 p-1 rounded-xl border border-slate-800 flex space-x-1 shrink-0 self-start sm:self-auto">
+                    <button type="button" onclick="setInflowPeriod('monthly')" id="btn-period-monthly" class="inflow-period-btn px-3 py-1.5 rounded-lg text-xs font-bold bg-indigo-600 text-white shadow-sm transition">Monthly</button>
+                    <button type="button" onclick="setInflowPeriod('yearly')" id="btn-period-yearly" class="inflow-period-btn px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-400 hover:text-white transition">Yearly</button>
+                    <button type="button" onclick="setInflowPeriod('lifetime')" id="btn-period-lifetime" class="inflow-period-btn px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-400 hover:text-white transition">Lifetime</button>
+                </div>
+            </div>
+
+            <!-- Month & Year Controls -->
+            <div id="inflow-time-controls" class="flex flex-wrap items-center gap-3 pt-2 border-t border-slate-800/60">
+                <div id="inflow-month-container" class="flex items-center space-x-2 text-xs">
+                    <label class="text-slate-400 font-medium">Month:</label>
+                    <select id="inflow-month-select" onchange="updateInflowsView()" class="bg-slate-950 border border-slate-800 text-white rounded-xl px-3 py-1.5 font-semibold focus:outline-none focus:border-indigo-500">
+                        <option value="1">January</option>
+                        <option value="2">February</option>
+                        <option value="3">March</option>
+                        <option value="4">April</option>
+                        <option value="5">May</option>
+                        <option value="6">June</option>
+                        <option value="7">July</option>
+                        <option value="8">August</option>
+                        <option value="9">September</option>
+                        <option value="10">October</option>
+                        <option value="11">November</option>
+                        <option value="12">December</option>
+                    </select>
+                </div>
+
+                <div id="inflow-year-container" class="flex items-center space-x-2 text-xs">
+                    <label class="text-slate-400 font-medium">Year:</label>
+                    <select id="inflow-year-select" onchange="updateInflowsView()" class="bg-slate-950 border border-slate-800 text-white rounded-xl px-3 py-1.5 font-semibold focus:outline-none focus:border-indigo-500">
+                    </select>
+                </div>
+            </div>
+
+            <!-- Summary Card -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 pt-2">
+                <div class="bg-slate-900/60 p-4 rounded-2xl border border-slate-800/60">
+                    <p class="text-xs font-medium text-slate-400">Capital Injected (Outflows)</p>
+                    <p id="inflow-summary-injected" class="text-xl font-extrabold text-indigo-400 font-mono mt-1">₹0.00</p>
+                    <p class="text-[11px] text-slate-500 mt-0.5">Total Deposits</p>
+                </div>
+                <div class="bg-slate-900/60 p-4 rounded-2xl border border-slate-800/60">
+                    <p class="text-xs font-medium text-slate-400">Payouts &amp; Returns (Inflows)</p>
+                    <p id="inflow-summary-payouts" class="text-xl font-extrabold text-emerald-400 font-mono mt-1">₹0.00</p>
+                    <p class="text-[11px] text-slate-500 mt-0.5">Withdrawals &amp; Interest</p>
+                </div>
+                <div class="bg-slate-900/60 p-4 rounded-2xl border border-slate-800/60">
+                    <p class="text-xs font-medium text-slate-400">Net Cash Flow</p>
+                    <p id="inflow-summary-netflow" class="text-xl font-extrabold text-white font-mono mt-1">₹0.00</p>
+                    <p class="text-[11px] text-slate-500 mt-0.5">Capital Injected &minus; Payouts</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Related Period Transactions (Paginated 10 per page) -->
+        <div class="apple-card rounded-3xl p-6 space-y-4">
+            <div class="flex items-center justify-between">
+                <h4 class="font-semibold text-sm tracking-tight text-white flex items-center space-x-2">
+                    <span>Related Period Contract Entries</span>
+                    <span id="inflow-tx-count" class="px-2 py-0.5 text-[11px] font-bold rounded-full bg-slate-800 text-indigo-300 font-mono">0</span>
+                </h4>
+            </div>
+
+            <div class="overflow-x-auto">
+                <table id="inflows-tx-table" class="w-full text-left text-xs" data-paginate="10">
+                    <thead>
+                        <tr class="text-slate-400 border-b border-slate-800/80 font-semibold uppercase tracking-wider text-[10px]">
+                            <th class="pb-3 px-2">Type</th>
+                            <th class="pb-3 px-2">Date</th>
+                            <th class="pb-3 px-2">Notes / Memo</th>
+                            <th class="pb-3 px-2 text-right">Total Flow</th>
+                        </tr>
+                    </thead>
+                    <tbody id="inflows-tx-tbody" class="divide-y divide-slate-800/60">
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- TAB 4: NOTES -->
+    <div id="content-notes" class="tab-content hidden space-y-4">
+        <div class="apple-card rounded-3xl p-6">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="font-semibold text-sm tracking-tight text-white">Contract Notes</h3>
+                <a href="{{ url_for('notes.index') }}" class="text-xs font-semibold text-indigo-400 hover:text-indigo-300 transition">+ Add Note</a>
+            </div>
+
+            {% if notes %}
+            <div class="space-y-3">
+                {% for n in notes %}
+                <div class="p-4 rounded-2xl bg-slate-900/60 border border-slate-800/60 space-y-1">
+                    <h4 class="font-semibold text-xs text-white">{{ n.title }}</h4>
+                    <p class="text-xs text-slate-300 leading-relaxed">{{ n.content }}</p>
+                    <p class="text-[10px] text-slate-500 pt-1 font-mono">{{ n.created_at }}</p>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <p class="text-xs text-slate-500 italic">No notes created for this contract yet.</p>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- TAB 5: REMINDERS -->
+    <div id="content-reminders" class="tab-content hidden space-y-4">
+        <div class="apple-card rounded-3xl p-6">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="font-semibold text-sm tracking-tight text-white">Reminders &amp; Maturity Alerts</h3>
+                <a href="{{ url_for('reminders.index') }}" class="text-xs font-semibold text-indigo-400 hover:text-indigo-300 transition">+ Schedule Reminder</a>
+            </div>
+
+            {% if reminders %}
+            <div class="space-y-3">
+                {% for r in reminders %}
+                <div class="p-4 rounded-2xl bg-slate-900/60 border border-slate-800/60 flex items-center justify-between">
+                    <div>
+                        <h4 class="font-semibold text-xs text-white">{{ r.title }}</h4>
+                        <p class="text-[11px] text-slate-400 mt-0.5">Due: {{ r.due_date }}</p>
+                    </div>
+                    <span class="px-2.5 py-1 text-[10px] font-bold rounded-lg {% if r.is_completed %}bg-emerald-950 text-emerald-300{% else %}bg-amber-950 text-amber-300{% endif %}">
+                        {% if r.is_completed %}Completed{% else %}Pending{% endif %}
+                    </span>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <p class="text-xs text-slate-500 italic">No reminders scheduled for this contract.</p>
+            {% endif %}
+        </div>
+    </div>
+
+</div>
+
+<!-- Add Transaction Modal -->
+<div id="addTxModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
+    <div class="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-md p-6 shadow-2xl space-y-4">
+        <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+            <h3 class="font-bold text-base text-white">Record Contract Entry</h3>
+            <button onclick="document.getElementById('addTxModal').classList.add('hidden')" class="text-slate-400 hover:text-white">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+        </div>
+        <form method="POST" action="{{ url_for('transactions.add_transaction') }}" class="space-y-3 text-xs">
+            <input type="hidden" name="asset_id" value="{{ asset.id }}">
+            <div class="grid grid-cols-2 gap-3">
+                <div>
+                    <label class="block font-semibold text-slate-300 mb-1">Transaction Type</label>
+                    <select name="type" id="contract_add_tx_type" required onchange="onContractTxTypeChange(this)" class="w-full bg-slate-950 border border-slate-800 text-white rounded-xl p-2.5">
+                        {% for tx_cfg in allowed_transactions %}
+                        <option value="{{ tx_cfg.raw_type }}" data-raw-type="{{ tx_cfg.raw_type }}" data-prompt="{{ tx_cfg.notes_prompt or '' }}">
+                            {{ tx_cfg.display_name }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div>
+                    <label class="block font-semibold text-slate-300 mb-1">Date</label>
+                    <input type="date" name="date" required class="w-full bg-slate-950 border border-slate-800 text-white rounded-xl p-2.5">
+                </div>
+            </div>
+
+            <div>
+                <label id="contract_add_tx_amount_label" class="block font-semibold text-slate-300 mb-1">Amount</label>
+                <input type="number" step="any" name="price_per_unit" required class="w-full bg-slate-950 border border-slate-800 text-white rounded-xl p-2.5 font-mono text-sm">
+                <input type="hidden" name="units" value="1.0">
+            </div>
+
+            <div>
+                <label class="block font-semibold text-slate-300 mb-1">Notes / Remarks</label>
+                <input type="text" id="contract_add_tx_notes" name="notes" placeholder="Ref ID or memo..." class="w-full bg-slate-950 border border-slate-800 text-white rounded-xl p-2.5">
+            </div>
+
+            <div class="pt-3 border-t border-slate-800 flex justify-end space-x-2">
+                <button type="button" onclick="document.getElementById('addTxModal').classList.add('hidden')" class="px-4 py-2 bg-slate-800 text-slate-300 rounded-xl font-semibold hover:bg-slate-700">Cancel</button>
+                <button type="submit" class="px-4 py-2 bg-indigo-600 text-white rounded-xl font-semibold hover:bg-indigo-500 shadow-md shadow-indigo-600/30">Save Entry</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Update Balance Modal -->
+<div id="updateBalanceModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
+    <div class="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-md p-6 shadow-2xl space-y-4">
+        <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+            <h3 class="font-bold text-base text-white flex items-center space-x-2">
+                <i class="fa-solid fa-wallet text-emerald-400 text-sm"></i>
+                <span>Update Account Balance</span>
+            </h3>
+            <button onclick="document.getElementById('updateBalanceModal').classList.add('hidden')" class="text-slate-400 hover:text-white">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+        </div>
+        <form method="POST" action="{{ url_for('assets.update_balance', asset_id=asset.id) }}" class="space-y-4 text-xs">
+            <div>
+                <label class="block font-semibold text-slate-300 mb-1">Current Account Balance / Valuation ({{ category.currency_code if category else 'INR' }})</label>
+                <input type="number" step="any" name="current_balance" value="{{ asset.current_price }}" required autofocus class="w-full bg-slate-950 border border-slate-800 text-white rounded-xl p-3 font-mono text-base font-bold focus:border-indigo-500">
+                <p class="text-[11px] text-slate-400 mt-1">Enter the latest balance as reported by your bank statement or passbook.</p>
+            </div>
+
+            <div class="pt-3 border-t border-slate-800 flex justify-end space-x-2">
+                <button type="button" onclick="document.getElementById('updateBalanceModal').classList.add('hidden')" class="px-4 py-2 bg-slate-800 text-slate-300 rounded-xl font-semibold hover:bg-slate-700">Cancel</button>
+                <button type="submit" class="px-5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-bold shadow-md shadow-emerald-600/30">Update Balance</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Edit Asset Modal -->
+<div id="editAssetModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
+    <div class="bg-slate-900 border border-slate-800 rounded-3xl w-full max-w-lg p-6 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
+        <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+            <h3 class="font-bold text-base text-white flex items-center space-x-2">
+                <i class="fa-solid fa-pen-to-square text-indigo-400 text-sm"></i>
+                <span>Edit Asset Settings</span>
+            </h3>
+            <button onclick="document.getElementById('editAssetModal').classList.add('hidden')" class="text-slate-400 hover:text-white">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+        </div>
+        <form method="POST" action="{{ url_for('assets.edit_asset', asset_id=asset.id) }}" class="space-y-3 text-xs">
+            <!-- Investment Classification -->
+            <div class="grid grid-cols-2 gap-3">
+                <div>
+                    <label class="block font-semibold text-slate-300 mb-1">Holding Type</label>
+                    <select name="holding_type" id="contract_edit_asset_holding_type" required onchange="onContractEditAssetHoldingTypeChange(this)" class="w-full bg-slate-950 border border-slate-800 text-white rounded-xl p-2.5">
+                        <option value="investment" {% if asset.holding_type == 'investment' %}selected{% endif %}>Stocks / Mutual Funds</option>
+                        <option value="bankBalance" {% if asset.holding_type == 'bankBalance' %}selected{% endif %}>Bank Balance</option>
+                        <option value="fixedDeposit" {% if asset.holding_type == 'fixedDeposit' %}selected{% endif %}>Fixed Deposit / RD</option>
+                        <option value="postOffice" {% if asset.holding_type == 'postOffice' %}selected{% endif %}>Post Office Scheme (PPF/NSC/MIS)</option>
+                        <option value="epf" {% if asset.holding_type == 'epf' %}selected{% endif %}>EPF / Provident Fund</option>
+                        <option value="insuranceAnnuity" {% if asset.holding_type == 'insuranceAnnuity' %}selected{% endif %}>LIC / Insurance / Annuity</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block font-semibold text-slate-300 mb-1">Category</label>
+                    <select name="category_id" required class="w-full bg-slate-950 border border-slate-800 text-white rounded-xl p-2.5">
+                        {% for c in categories %}
+                        <option value="{{ c.id }}" {% if asset.category_id == c.id %}selected{% endif %}>{{ c.name }} ({{ c.currency_code }})</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+
+            <!-- Subcategory -->
+            {% if subcategories %}
+            <div>
+                <label class="block font-semibold text-slate-300 mb-1">Subcategory</label>
+                <select name="subcategory_id" class="w-full bg-slate-950 border border-slate-800 text-white rounded-xl p-2.5">
+                    <option value="">Unassigned</option>
+                    {% for sc in subcategories %}
+                    <option value="{{ sc.id }}" {% if asset.subcategory_id == sc.id %}selected{% endif %}>{{ sc.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            {% endif %}
+
+            <!-- Basic Info -->
+            <div>
+                <label class="block font-semibold text-slate-300 mb-1">Asset Name</label>
+                <input type="text" name="name" value="{{ asset.name }}" required class="w-full bg-slate-950 border border-slate-800 text-white rounded-xl p-2.5 focus:border-indigo-500">
+            </div>
+
+            <!-- Investment Specific Fields -->
+            <div id="contract_edit_group_investment" class="grid grid-cols-2 gap-3 {% if asset.holding_type != 'investment' %}hidden{% endif %}">
+                <div>
+                    <label class="block font-semibold text-slate-300 mb-1">Ticker / Symbol</label>
+                    <input type="text" name="ticker" value="{{ asset.ticker or '' }}" placeholder="e.g. RELIANCE, AAPL" class="w-full bg-slate-950 border border-slate-800 text-white rounded-xl p-2.5">
+                </div>
+                <div>
+                    <label class="block font-semibold text-slate-300 mb-1">Current CMP / Price</label>
+                    <input type="number" step="any" name="current_price" value="{{ asset.current_price or 0.0 }}" class="w-full bg-slate-950 border border-slate-800 text-white font-mono rounded-xl p-2.5">
+                </div>
+            </div>
+
+            <!-- Non-unitized / Institution fields -->
+            <div id="contract_edit_group_institution" class="{% if asset.holding_type == 'investment' %}hidden{% endif %}">
+                <label class="block font-semibold text-slate-300 mb-1">Institution / Bank Name (Optional)</label>
+                <input type="text" name="institution_name" value="{{ asset.institution_name or '' }}" placeholder="e.g. HDFC Bank, SBI, LIC" class="w-full bg-slate-950 border border-slate-800 text-white rounded-xl p-2.5">
+            </div>
+
+            <!-- Balance / Value Field -->
+            <div id="contract_edit_group_balance" class="{% if asset.holding_type == 'investment' %}hidden{% endif %} grid grid-cols-2 gap-3">
+                <div>
+                    <label id="contract_edit_balance_label" class="block font-semibold text-slate-300 mb-1">Current Balance / Valuation</label>
+                    <input type="number" step="any" name="current_price" value="{{ asset.current_price or 0.0 }}" class="w-full bg-slate-950 border border-slate-800 text-white font-mono rounded-xl p-2.5">
+                </div>
+                <div id="contract_edit_field_interest_rate" class="{% if asset.holding_type == 'investment' or asset.holding_type == 'bankBalance' %}hidden{% endif %}">
+                    <label class="block font-semibold text-slate-300 mb-1">Interest Rate (% p.a.)</label>
+                    <input type="number" step="any" name="interest_rate" value="{{ asset.interest_rate or 0.0 }}" placeholder="e.g. 7.5" class="w-full bg-slate-950 border border-slate-800 text-white font-mono rounded-xl p-2.5">
+                </div>
+            </div>
+
+            <!-- FD / Post Office specific fields -->
+            <div id="contract_edit_group_fd" class="{% if asset.holding_type != 'fixedDeposit' and asset.holding_type != 'postOffice' %}hidden{% endif %} space-y-3">
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block font-semibold text-slate-300 mb-1">Principal Amount</label>
+                        <input type="number" step="any" name="principal_amount" value="{{ asset.principal_amount or 0.0 }}" placeholder="Deposited amount" class="w-full bg-slate-950 border border-slate-800 text-white font-mono rounded-xl p-2.5">
+                    </div>
+                    <div>
+                        <label class="block font-semibold text-slate-300 mb-1">Interest Payout Mode</label>
+                        <select name="payout_frequency" class="w-full bg-slate-950 border border-slate-800 text-white rounded-xl p-2.5">
+                            <option value="cumulative" {% if asset.payout_frequency == 'cumulative' %}selected{% endif %}>Cumulative / At Maturity</option>
+                            <option value="monthly" {% if asset.payout_frequency == 'monthly' %}selected{% endif %}>Monthly Payout</option>
+                            <option value="quarterly" {% if asset.payout_frequency == 'quarterly' %}selected{% endif %}>Quarterly Payout</option>
+                            <option value="annual" {% if asset.payout_frequency == 'annual' %}selected{% endif %}>Annual Payout</option>
+                        </select>
+                    </div>
+                </div>
+                <div>
+                    <label class="block font-semibold text-slate-300 mb-1">Maturity Date (Optional)</label>
+                    <input type="date" name="maturity_date" value="{{ asset.maturity_date.strftime('%Y-%m-%d') if asset.maturity_date else '' }}" class="w-full bg-slate-950 border border-slate-800 text-white rounded-xl p-2.5">
+                </div>
+            </div>
+
+            <!-- LIC / Insurance specific fields -->
+            <div id="contract_edit_group_insurance" class="{% if asset.holding_type != 'insuranceAnnuity' %}hidden{% endif %} space-y-3">
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block font-semibold text-slate-300 mb-1">Policy / Account Number</label>
+                        <input type="text" name="policy_number" value="{{ asset.policy_number or '' }}" placeholder="Policy #" class="w-full bg-slate-950 border border-slate-800 text-white rounded-xl p-2.5">
+                    </div>
+                    <div>
+                        <label class="block font-semibold text-slate-300 mb-1">Annual Premium Amount</label>
+                        <input type="number" step="any" name="premium_amount" value="{{ asset.premium_amount or 0.0 }}" placeholder="e.g. 50000" class="w-full bg-slate-950 border border-slate-800 text-white font-mono rounded-xl p-2.5">
+                    </div>
+                </div>
+                <div>
+                    <label class="block font-semibold text-slate-300 mb-1">Payment Term (Years)</label>
+                    <input type="number" name="premium_term_years" value="{{ asset.premium_term_years or 0 }}" placeholder="e.g. 15" class="w-full bg-slate-950 border border-slate-800 text-white font-mono rounded-xl p-2.5">
+                </div>
+                <div class="flex items-center space-x-2 pt-1">
+                    <input type="checkbox" id="contract_edit_is_completed" name="is_completed" value="1" {% if asset.is_completed %}checked{% endif %} class="rounded bg-slate-950 border-slate-800 text-indigo-600">
+                    <label for="contract_edit_is_completed" class="font-semibold text-slate-300">Policy Completed / Matured / Surrendered</label>
+                </div>
+            </div>
+
+            <!-- Tax Settings -->
+            <div class="pt-2 border-t border-slate-800 space-y-2">
+                <p class="font-semibold text-slate-300 text-xs">Tax Classification</p>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block font-semibold text-slate-300 mb-1">Tax Country</label>
+                        <select name="tax_country" class="w-full bg-slate-950 border border-slate-800 text-white rounded-xl p-2.5">
+                            <option value="India" {% if asset.tax_country == 'India' %}selected{% endif %}>India</option>
+                            <option value="United States" {% if asset.tax_country == 'United States' %}selected{% endif %}>United States</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block font-semibold text-slate-300 mb-1">Tax Asset Type</label>
+                        <select name="tax_asset_type" class="w-full bg-slate-950 border border-slate-800 text-white rounded-xl p-2.5">
+                            <option value="equity" {% if asset.tax_asset_type == 'equity' %}selected{% endif %}>Equity (Stocks/MFs)</option>
+                            <option value="debt" {% if asset.tax_asset_type == 'debt' %}selected{% endif %}>Debt / Fixed Income</option>
+                            <option value="real_estate" {% if asset.tax_asset_type == 'real_estate' %}selected{% endif %}>Real Estate</option>
+                            <option value="gold" {% if asset.tax_asset_type == 'gold' %}selected{% endif %}>Gold</option>
+                            <option value="other" {% if asset.tax_asset_type == 'other' %}selected{% endif %}>Other / Alternate</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <div class="pt-3 border-t border-slate-800 flex items-center justify-between">
+                <button type="button" onclick="if(confirm('Are you sure you want to delete this contract asset? All associated entries will be removed.')) { document.getElementById('contractDeleteAssetForm').submit(); }" class="px-4 py-2 bg-rose-600/90 hover:bg-rose-500 text-white rounded-xl font-semibold transition shadow-md shadow-rose-600/20 flex items-center space-x-1.5">
+                    <i class="fa-solid fa-trash text-xs"></i>
+                    <span>Delete Asset</span>
+                </button>
+                <div class="flex items-center space-x-2">
+                    <button type="button" onclick="document.getElementById('editAssetModal').classList.add('hidden')" class="px-4 py-2 bg-slate-800 text-slate-300 rounded-xl font-semibold hover:bg-slate-700">Cancel</button>
+                    <button type="submit" class="px-4 py-2 bg-indigo-600 text-white rounded-xl font-semibold hover:bg-indigo-500 shadow-md shadow-indigo-600/30">Save Changes</button>
+                </div>
+            </div>
+        </form>
+
+        <form id="contractDeleteAssetForm" method="POST" action="{{ url_for('assets.delete_asset', asset_id=asset.id) }}" class="hidden"></form>
+    </div>
+</div>
+
+<script>
+    function onContractEditAssetHoldingTypeChange(selectEl) {
+        if (!selectEl) return;
+        const val = selectEl.value;
+
+        const groupInv = document.getElementById('contract_edit_group_investment');
+        const groupInst = document.getElementById('contract_edit_group_institution');
+        const groupBal = document.getElementById('contract_edit_group_balance');
+        const fieldInt = document.getElementById('contract_edit_field_interest_rate');
+        const groupFd = document.getElementById('contract_edit_group_fd');
+        const groupIns = document.getElementById('contract_edit_group_insurance');
+        const balLabel = document.getElementById('contract_edit_balance_label');
+
+        if (groupInv) groupInv.classList.toggle('hidden', val !== 'investment');
+        if (groupInst) groupInst.classList.toggle('hidden', val === 'investment');
+        if (groupBal) groupBal.classList.toggle('hidden', val === 'investment');
+        if (fieldInt) fieldInt.classList.toggle('hidden', val === 'investment' || val === 'bankBalance');
+        if (groupFd) groupFd.classList.toggle('hidden', val !== 'fixedDeposit' && val !== 'postOffice');
+        if (groupIns) groupIns.classList.toggle('hidden', val !== 'insuranceAnnuity');
+
+        if (balLabel) {
+            switch (val) {
+                case 'bankBalance': balLabel.innerText = 'Current Account Balance'; break;
+                case 'fixedDeposit': balLabel.innerText = 'Current FD Value / Total Balance'; break;
+                case 'postOffice': balLabel.innerText = 'Current Scheme Balance'; break;
+                case 'epf': balLabel.innerText = 'Accumulated EPF Balance'; break;
+                case 'insuranceAnnuity': balLabel.innerText = 'Current Cash / Surrender Value'; break;
+                default: balLabel.innerText = 'Current Price / Value'; break;
+            }
+        }
+    }
+</script>
+<!-- Edit & Delete Transaction Modal -->
+<div id="editTxModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
+    <div class="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-md p-6 shadow-2xl space-y-4">
+        <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+            <h3 class="font-bold text-base text-white flex items-center space-x-2">
+                <i class="fa-solid fa-pen-to-square text-indigo-400 text-sm"></i>
+                <span>Edit / Delete Contract Entry</span>
+            </h3>
+            <button onclick="document.getElementById('editTxModal').classList.add('hidden')" class="text-slate-400 hover:text-white">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+        </div>
+        <form id="editTxForm" method="POST" action="" class="space-y-3 text-xs">
+            <input type="hidden" id="edit_tx_id" name="tx_id" value="">
+            <input type="hidden" id="edit_asset_id" name="asset_id" value="{{ asset.id }}">
+            
+            <div class="grid grid-cols-2 gap-3">
+                <div>
+                    <label class="block font-semibold text-slate-300 mb-1">Type</label>
+                    <select id="edit_tx_type" name="type" required class="w-full bg-slate-950 border border-slate-800 text-white rounded-xl p-2.5">
+                        {% for tx_cfg in allowed_transactions %}
+                        <option value="{{ tx_cfg.raw_type }}">{{ tx_cfg.display_name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div>
+                    <label class="block font-semibold text-slate-300 mb-1">Date</label>
+                    <input type="date" id="edit_tx_date" name="date" required class="w-full bg-slate-950 border border-slate-800 text-white rounded-xl p-2.5">
+                </div>
+            </div>
+
+            <div>
+                <label class="block font-semibold text-slate-300 mb-1">Amount</label>
+                <input type="number" step="any" id="edit_tx_price" name="price_per_unit" required class="w-full bg-slate-950 border border-slate-800 text-white rounded-xl p-2.5">
+                <input type="hidden" id="edit_tx_units" name="units" value="1.0">
+            </div>
+
+            <div class="grid grid-cols-2 gap-3">
+                <div>
+                    <label class="block font-semibold text-slate-300 mb-1">Broker</label>
+                    <select id="edit_tx_broker_id" name="broker_id" class="w-full bg-slate-950 border border-slate-800 text-white rounded-xl p-2.5">
+                        <option value="">None / Direct</option>
+                        {% for b in brokers %}
+                        <option value="{{ b.id }}">{{ b.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div>
+                    <label class="block font-semibold text-slate-300 mb-1">Notes</label>
+                    <input type="text" id="edit_tx_notes" name="notes" placeholder="Ref ID or memo..." class="w-full bg-slate-950 border border-slate-800 text-white rounded-xl p-2.5">
+                </div>
+            </div>
+
+            <div class="pt-3 border-t border-slate-800 flex items-center justify-between">
+                <button type="button" onclick="deleteCurrentTx()" class="px-4 py-2 bg-rose-600/90 hover:bg-rose-500 text-white rounded-xl font-semibold transition shadow-md shadow-rose-600/20 flex items-center space-x-1.5">
+                    <i class="fa-solid fa-trash text-xs"></i>
+                    <span>Delete</span>
+                </button>
+                
+                <div class="flex items-center space-x-2">
+                    <button type="button" onclick="document.getElementById('editTxModal').classList.add('hidden')" class="px-4 py-2 bg-slate-800 text-slate-300 rounded-xl font-semibold hover:bg-slate-700">Cancel</button>
+                    <button type="submit" class="px-4 py-2 bg-indigo-600 text-white rounded-xl font-semibold hover:bg-indigo-500 shadow-md shadow-indigo-600/30">Save Changes</button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    function switchTab(tabName) {
+        document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+        document.querySelectorAll('.tab-btn').forEach(btn => {
+            btn.classList.remove('bg-indigo-600', 'text-white', 'shadow-sm', 'font-bold');
+            btn.classList.add('text-slate-400', 'font-semibold');
+        });
+
+        const activeContent = document.getElementById('content-' + tabName);
+        const activeBtn = document.getElementById('tab-' + tabName);
+
+        if (activeContent) activeContent.classList.remove('hidden');
+        if (activeBtn) {
+            activeBtn.classList.remove('text-slate-400', 'font-semibold');
+            activeBtn.classList.add('bg-indigo-600', 'text-white', 'shadow-sm', 'font-bold');
+        }
+
+        if (tabName === 'inflows' && typeof initInflowsTab === 'function') {
+            initInflowsTab();
+        }
+    }
+    window.switchTab = switchTab;
+
+    function openEditTxModal(tx) {
+        if (!tx) return;
+        document.getElementById('edit_tx_id').value = tx.id;
+        document.getElementById('edit_tx_type').value = tx.raw_type || tx.type || 'BUY';
+        document.getElementById('edit_tx_date').value = tx.date ? tx.date.split('T')[0] : '';
+        document.getElementById('edit_tx_units').value = tx.units || 1.0;
+        document.getElementById('edit_tx_price').value = tx.price_per_unit || 0;
+        document.getElementById('edit_tx_broker_id').value = tx.broker_id || '';
+        document.getElementById('edit_tx_notes').value = tx.notes || '';
+        
+        document.getElementById('editTxForm').action = '/transactions/edit/' + tx.id;
+        document.getElementById('editTxModal').classList.remove('hidden');
+    }
+
+    let inflowsTxData = [
+        {% for tx in transactions %}
+        {
+            id: {{ tx.id }},
+            type: "{{ tx.type }}",
+            raw_type: "{{ tx.raw_type }}",
+            date: "{{ tx.date.strftime('%Y-%m-%d') if tx.date else '' }}",
+            year: {{ tx.date.year if tx.date else 2026 }},
+            month: {{ tx.date.month if tx.date else 1 }},
+            amount: {{ tx.price_per_unit }},
+            units: {{ tx.units }},
+            price: {{ tx.price_per_unit }},
+            notes: "{{ tx.notes or '' }}",
+            broker: "{{ tx.broker_name or '' }}"
+        }{% if not loop.last %},{% endif %}
+        {% endfor %}
+    ];
+
+    let currentInflowPeriod = 'monthly';
+
+    function initInflowsTab() {
+        const yearSelect = document.getElementById('inflow-year-select');
+        const monthSelect = document.getElementById('inflow-month-select');
+        if (!yearSelect) return;
+
+        const years = new Set();
+        const currentYear = new Date().getFullYear();
+        years.add(currentYear);
+
+        inflowsTxData.forEach(tx => {
+            if (tx.year) years.add(tx.year);
+        });
+
+        const sortedYears = Array.from(years).sort((a, b) => b - a);
+        yearSelect.innerHTML = sortedYears.map(y => `<option value="${y}">${y}</option>`).join('');
+
+        const currentMonth = new Date().getMonth() + 1;
+        if (monthSelect) monthSelect.value = currentMonth.toString();
+        yearSelect.value = currentYear.toString();
+
+        updateInflowsView();
+    }
+
+    function setInflowPeriod(period) {
+        currentInflowPeriod = period;
+        document.querySelectorAll('.inflow-period-btn').forEach(btn => {
+            btn.classList.remove('bg-indigo-600', 'text-white', 'shadow-sm', 'font-bold');
+            btn.classList.add('text-slate-400', 'font-semibold');
+        });
+
+        const activeBtn = document.getElementById('btn-period-' + period);
+        if (activeBtn) {
+            activeBtn.classList.remove('text-slate-400', 'font-semibold');
+            activeBtn.classList.add('bg-indigo-600', 'text-white', 'shadow-sm', 'font-bold');
+        }
+
+        const monthContainer = document.getElementById('inflow-month-container');
+        const yearContainer = document.getElementById('inflow-year-container');
+
+        if (period === 'monthly') {
+            if (monthContainer) monthContainer.classList.remove('hidden');
+            if (yearContainer) yearContainer.classList.remove('hidden');
+        } else if (period === 'yearly') {
+            if (monthContainer) monthContainer.classList.add('hidden');
+            if (yearContainer) yearContainer.classList.remove('hidden');
+        } else {
+            if (monthContainer) monthContainer.classList.add('hidden');
+            if (yearContainer) yearContainer.classList.add('hidden');
+        }
+
+        updateInflowsView();
+    }
+
+    function updateInflowsView() {
+        const monthVal = parseInt(document.getElementById('inflow-month-select')?.value || '1');
+        const yearVal = parseInt(document.getElementById('inflow-year-select')?.value || new Date().getFullYear().toString());
+
+        let filtered = [];
+        if (currentInflowPeriod === 'lifetime') {
+            filtered = inflowsTxData;
+        } else if (currentInflowPeriod === 'yearly') {
+            filtered = inflowsTxData.filter(tx => tx.year === yearVal);
+        } else {
+            filtered = inflowsTxData.filter(tx => tx.year === yearVal && tx.month === monthVal);
+        }
+
+        let injected = 0.0;
+        let payouts = 0.0;
+
+        filtered.forEach(tx => {
+            if (tx.type === 'BUY') {
+                injected += tx.amount;
+            } else if (tx.type === 'SELL') {
+                payouts += tx.amount;
+            }
+        });
+
+        const netFlow = injected - payouts;
+        const currencyCode = "{{ category.currency_code if category else 'INR' }}";
+        const symbol = currencyCode === 'USD' ? '$' : '₹';
+
+        const injectedEl = document.getElementById('inflow-summary-injected');
+        const payoutsEl = document.getElementById('inflow-summary-payouts');
+        const netflowEl = document.getElementById('inflow-summary-netflow');
+        const countEl = document.getElementById('inflow-tx-count');
+
+        if (injectedEl) injectedEl.innerText = symbol + injected.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        if (payoutsEl) payoutsEl.innerText = symbol + payouts.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        if (netflowEl) {
+            const prefix = netFlow >= 0 ? '+' : '';
+            netflowEl.innerText = prefix + symbol + netFlow.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+            netflowEl.className = "text-xl font-extrabold font-mono mt-1 " + (netFlow >= 0 ? "text-indigo-400" : "text-rose-400");
+        }
+        if (countEl) countEl.innerText = filtered.length;
+
+        const tbody = document.getElementById('inflows-tx-tbody');
+        if (tbody) {
+            if (filtered.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="4" class="py-6 text-center text-slate-500 italic">No contract entries found for the selected period.</td></tr>`;
+            } else {
+                tbody.innerHTML = filtered.map(tx => `
+                    <tr class="hover:bg-slate-900/40 transition">
+                        <td class="py-3 px-2 font-semibold text-white">
+                            <span class="inline-flex items-center space-x-1.5">
+                                <span class="w-2 h-2 rounded-full ${tx.type === 'BUY' ? 'bg-indigo-400' : (tx.type === 'SELL' ? 'bg-rose-400' : 'bg-amber-400')}"></span>
+                                <span>${tx.raw_type}</span>
+                            </span>
+                        </td>
+                        <td class="py-3 px-2 font-mono text-slate-300">${tx.date}</td>
+                        <td class="py-3 px-2 font-sans text-slate-300">${tx.notes || 'Contract Entry'}</td>
+                        <td class="py-3 px-2 font-mono font-bold text-right ${tx.type === 'BUY' ? 'text-indigo-400' : 'text-emerald-400'}">
+                            ${symbol}${tx.amount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </td>
+                    </tr>
+                `).join('');
+            }
+
+            if (typeof paginateTable === 'function') {
+                paginateTable('inflows-tx-table', 10);
+            }
+        }
+    }
+
+    function onContractTxTypeChange(selectEl) {
+        if (!selectEl) return;
+        const opt = selectEl.options[selectEl.selectedIndex];
+        if (!opt) return;
+        const prompt = opt.getAttribute('data-prompt');
+        const notesInput = document.getElementById('contract_add_tx_notes');
+        const amountLabel = document.getElementById('contract_add_tx_amount_label');
+
+        if (notesInput && prompt) {
+            notesInput.placeholder = prompt;
+        }
+        if (amountLabel) {
+            amountLabel.innerText = opt.text.trim() + ' Amount';
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        initInflowsTab();
+        const sel = document.getElementById('contract_add_tx_type');
+        if (sel) onContractTxTypeChange(sel);
+    });
+</script>
+{% endblock %}

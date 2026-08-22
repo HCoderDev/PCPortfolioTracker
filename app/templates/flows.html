@@ -1,0 +1,827 @@
+{% extends "base.html" %}
+
+{% block title %}Flows & Cash — Portfolio Tracker{% endblock %}
+{% block header_title %}Flows & Trade Activity{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+
+    <!-- PERIOD & CURRENCY SELECTOR CARD -->
+    <div class="apple-card rounded-3xl p-6 space-y-4">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div>
+                <p class="text-[10px] font-extrabold uppercase tracking-wider text-slate-400">Currency Display</p>
+                <div class="mt-1 flex items-center bg-slate-950 p-1 rounded-xl border border-slate-800 self-start shrink-0">
+                    <button type="button" onclick="setCurrencyDisplay(true)" id="btn-curr-inr" class="px-3 py-1 text-xs font-bold rounded-lg bg-indigo-600 text-white shadow-sm transition">INR (₹) Default</button>
+                    <button type="button" onclick="setCurrencyDisplay(false)" id="btn-curr-native" class="px-3 py-1 text-xs font-semibold text-slate-400 hover:text-white transition">Native Currency</button>
+                </div>
+            </div>
+
+            <!-- Period Segmented Picker -->
+            <div>
+                <p class="text-[10px] font-extrabold uppercase tracking-wider text-slate-400">Timeframe Period</p>
+                <div class="mt-1 bg-slate-950 p-1 rounded-xl border border-slate-800 flex space-x-1 shrink-0 self-start sm:self-auto">
+                    <button type="button" onclick="setFlowPeriod('monthly')" id="btn-flow-monthly" class="flow-period-btn px-3.5 py-1.5 rounded-lg text-xs font-bold bg-indigo-600 text-white shadow-sm transition">Monthly</button>
+                    <button type="button" onclick="setFlowPeriod('yearly')" id="btn-flow-yearly" class="flow-period-btn px-3.5 py-1.5 rounded-lg text-xs font-semibold text-slate-400 hover:text-white transition">Yearly</button>
+                    <button type="button" onclick="setFlowPeriod('lifetime')" id="btn-flow-lifetime" class="flow-period-btn px-3.5 py-1.5 rounded-lg text-xs font-semibold text-slate-400 hover:text-white transition">Lifetime</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Year & Month Pickers -->
+        <div id="flow-time-controls" class="flex flex-wrap items-center gap-3 pt-3 border-t border-slate-800/60">
+            <div id="flow-year-container" class="flex items-center space-x-2 text-xs">
+                <label class="text-slate-400 font-semibold">Year:</label>
+                <select id="flow-year-select" onchange="renderFlowsView()" class="bg-slate-950 border border-slate-800 text-white rounded-xl px-3.5 py-1.5 font-semibold focus:outline-none focus:border-indigo-500">
+                    {% for y in available_years %}
+                    <option value="{{ y }}" {% if y == current_year %}selected{% endif %}>{{ y }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div id="flow-month-container" class="flex items-center space-x-2 text-xs">
+                <label class="text-slate-400 font-semibold">Month:</label>
+                <select id="flow-month-select" onchange="renderFlowsView()" class="bg-slate-950 border border-slate-800 text-white rounded-xl px-3.5 py-1.5 font-semibold focus:outline-none focus:border-indigo-500">
+                    <option value="1">January</option>
+                    <option value="2">February</option>
+                    <option value="3">March</option>
+                    <option value="4">April</option>
+                    <option value="5">May</option>
+                    <option value="6">June</option>
+                    <option value="7">July</option>
+                    <option value="8">August</option>
+                    <option value="9">September</option>
+                    <option value="10">October</option>
+                    <option value="11">November</option>
+                    <option value="12">December</option>
+                </select>
+            </div>
+        </div>
+    </div>
+
+    <!-- COMPREHENSIVE COMBINED SUMMARY CARD -->
+    <div class="apple-card rounded-3xl p-6 space-y-4">
+        <h3 id="flow-summary-title" class="font-bold text-base text-white">Summary &amp; Activity</h3>
+
+        <!-- Amounts Row -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div class="bg-slate-900/60 p-4 rounded-2xl border border-slate-800/60">
+                <p class="text-xs font-medium text-slate-400">Total Invested</p>
+                <p id="summary-total-invested" class="text-2xl font-extrabold text-white font-mono mt-1">₹0.00</p>
+                <p class="text-[11px] text-slate-500 mt-0.5">Capital Injected (Outflows)</p>
+            </div>
+            <div class="bg-slate-900/60 p-4 rounded-2xl border border-slate-800/60">
+                <p class="text-xs font-medium text-slate-400">Total Withdrawn</p>
+                <p id="summary-total-withdrawn" class="text-2xl font-extrabold text-white font-mono mt-1">₹0.00</p>
+                <p class="text-[11px] text-slate-500 mt-0.5">Payouts &amp; Returns (Inflows)</p>
+            </div>
+            <div class="bg-slate-900/60 p-4 rounded-2xl border border-slate-800/60">
+                <p class="text-xs font-medium text-slate-400">Net Portfolio Flow</p>
+                <p id="summary-net-flow" class="text-2xl font-extrabold text-white font-mono mt-1">₹0.00</p>
+                <p class="text-[11px] text-slate-500 mt-0.5">Total Invested &minus; Withdrawn</p>
+            </div>
+        </div>
+
+        <div class="my-2 border-t border-slate-800/60"></div>
+
+        <!-- Trade Activity & Hold Discipline Row -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+            <div class="bg-slate-900/40 p-3.5 rounded-2xl border border-slate-800/40 flex items-center justify-between">
+                <div>
+                    <p class="text-slate-400 font-medium">Trade Transactions</p>
+                    <p id="summary-trade-counts" class="text-sm font-bold text-white font-mono mt-0.5">0 BUY &middot; 0 SELL &middot; 0 DIV</p>
+                </div>
+                <div class="w-8 h-8 rounded-xl bg-indigo-500/10 flex items-center justify-center text-indigo-400">
+                    <i class="fa-solid fa-arrow-right-arrow-left text-xs"></i>
+                </div>
+            </div>
+
+            <div class="bg-slate-900/40 p-3.5 rounded-2xl border border-slate-800/40 flex items-center justify-between">
+                <div>
+                    <p class="text-slate-400 font-medium">Hold Discipline</p>
+                    <p id="summary-hold-discipline" class="text-sm font-bold text-emerald-400 font-mono mt-0.5">100% BUY (0 Sales)</p>
+                </div>
+                <div id="discipline-icon" class="w-8 h-8 rounded-xl bg-emerald-500/10 flex items-center justify-center text-emerald-400">
+                    <i class="fa-solid fa-shield-halved text-xs"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- BANK & CASH ACCOUNTS BALANCES CARD -->
+    <div class="apple-card rounded-3xl p-6 space-y-4">
+        <div class="flex items-center justify-between">
+            <div class="flex items-center space-x-3">
+                <div class="w-9 h-9 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 font-bold">
+                    <i class="fa-solid fa-building-columns text-sm"></i>
+                </div>
+                <div>
+                    <h3 class="font-bold text-base text-white">Bank Accounts &amp; Cash Balances</h3>
+                    <p class="text-xs text-slate-400">View and update current balances for your liquid bank accounts.</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            {% for b_asset in all_assets %}
+            {% if b_asset.holding_type == 'bankBalance' or (b_asset.category_name and ('cash' in b_asset.category_name.lower() or 'bank' in b_asset.category_name.lower())) %}
+            <div class="bg-slate-900/60 p-4 rounded-2xl border border-slate-800/60 flex items-center justify-between gap-3">
+                <div class="min-w-0">
+                    <a href="{{ url_for('assets.asset_detail', asset_id=b_asset.id) }}" class="font-bold text-sm text-white hover:text-indigo-400 transition truncate block">{{ b_asset.name }}</a>
+                    <p class="text-xs font-mono font-bold text-emerald-400 mt-1">{{ b_asset.current_price | currency(b_asset.category_currency or 'INR') }}</p>
+                </div>
+                <button type="button" onclick="openUpdateBankModal({{ b_asset.id }}, '{{ b_asset.name.replace('\'', '\\\'') }}', {{ b_asset.current_price }})" class="px-3 py-1.5 bg-emerald-600/20 hover:bg-emerald-600 text-emerald-300 hover:text-white border border-emerald-500/30 rounded-xl text-xs font-bold transition flex items-center space-x-1 shrink-0">
+                    <i class="fa-solid fa-pen-to-square text-[10px]"></i>
+                    <span>Update Balance</span>
+                </button>
+            </div>
+            {% endif %}
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- DYNAMIC FLOW BREAKDOWN VIEW CONTAINER -->
+    <div id="flow-breakdown-container">
+        <!-- Rendered dynamically by JS -->
+    </div>
+
+</div>
+
+<!-- ASSET TRANSACTIONS POPUP MODAL -->
+<div id="assetTxModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
+    <div class="bg-slate-900 border border-slate-800 rounded-3xl w-full max-w-3xl p-6 shadow-2xl space-y-4 max-h-[85vh] flex flex-col">
+        <div class="flex items-center justify-between border-b border-slate-800 pb-3 shrink-0">
+            <div>
+                <h3 id="modal-asset-title" class="font-bold text-base text-white">Asset Transactions</h3>
+                <p id="modal-asset-subtitle" class="text-xs text-slate-400 mt-0.5">Transactions history</p>
+            </div>
+            <button onclick="document.getElementById('assetTxModal').classList.add('hidden')" class="text-slate-400 hover:text-white">
+                <i class="fa-solid fa-xmark text-base"></i>
+            </button>
+        </div>
+
+        <div class="overflow-y-auto flex-1 pr-1">
+            <table id="modal-asset-tx-table" class="w-full text-left text-xs border-collapse" data-paginate="10">
+                <thead>
+                    <tr class="text-slate-400 border-b border-slate-800 font-bold uppercase tracking-wider text-[10px]">
+                        <th class="pb-3 px-2">Type</th>
+                        <th class="pb-3 px-2">Date</th>
+                        <th class="pb-3 px-2 text-right">Units</th>
+                        <th class="pb-3 px-2 text-right">Price / Unit</th>
+                        <th class="pb-3 px-2 text-right">Total Amount</th>
+                        <th class="pb-3 px-2">Broker</th>
+                        <th class="pb-3 px-2">Notes</th>
+                    </tr>
+                </thead>
+                <tbody id="modal-asset-tx-tbody" class="divide-y divide-slate-800/60 font-mono">
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- EDIT / DELETE TRANSACTION MODAL -->
+<div id="editTxModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
+    <div class="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-md p-6 shadow-2xl space-y-4">
+        <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+            <h3 class="font-bold text-base text-white flex items-center space-x-2">
+                <i class="fa-solid fa-pen-to-square text-indigo-400 text-sm"></i>
+                <span>Edit / Delete Transaction</span>
+            </h3>
+            <button onclick="document.getElementById('editTxModal').classList.add('hidden')" class="text-slate-400 hover:text-white">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+        </div>
+        <form id="editTxForm" method="POST" action="" class="space-y-3 text-xs">
+            <input type="hidden" id="edit_tx_id" name="tx_id" value="">
+            
+            <div class="grid grid-cols-2 gap-3">
+                <div>
+                    <label class="block font-semibold text-slate-300 mb-1">Type</label>
+                    <select id="edit_tx_type" name="type" required class="w-full bg-slate-950 border border-slate-800 text-white rounded-xl p-2.5">
+                        <option value="BUY">BUY</option>
+                        <option value="SELL">SELL</option>
+                        <option value="DIVIDEND">DIVIDEND</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block font-semibold text-slate-300 mb-1">Date</label>
+                    <input type="date" id="edit_tx_date" name="date" required class="w-full bg-slate-950 border border-slate-800 text-white rounded-xl p-2.5">
+                </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-3">
+                <div>
+                    <label class="block font-semibold text-slate-300 mb-1">Units / Quantity</label>
+                    <input type="number" step="any" id="edit_tx_units" name="units" required class="w-full bg-slate-950 border border-slate-800 text-white rounded-xl p-2.5">
+                </div>
+                <div>
+                    <label class="block font-semibold text-slate-300 mb-1">Price per Unit / Amount</label>
+                    <input type="number" step="any" id="edit_tx_price" name="price_per_unit" required class="w-full bg-slate-950 border border-slate-800 text-white rounded-xl p-2.5">
+                </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-3">
+                <div>
+                    <label class="block font-semibold text-slate-300 mb-1">Broker</label>
+                    <select id="edit_tx_broker_id" name="broker_id" class="w-full bg-slate-950 border border-slate-800 text-white rounded-xl p-2.5">
+                        <option value="">None / Direct</option>
+                        {% for b in brokers %}
+                        <option value="{{ b.id }}">{{ b.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div>
+                    <label class="block font-semibold text-slate-300 mb-1">Notes</label>
+                    <input type="text" id="edit_tx_notes" name="notes" placeholder="Order ID or memo..." class="w-full bg-slate-950 border border-slate-800 text-white rounded-xl p-2.5">
+                </div>
+            </div>
+
+            <div class="pt-3 border-t border-slate-800 flex items-center justify-between">
+                <button type="button" onclick="deleteCurrentTx()" class="px-4 py-2 bg-rose-600/90 hover:bg-rose-500 text-white rounded-xl font-semibold transition shadow-md shadow-rose-600/20 flex items-center space-x-1.5">
+                    <i class="fa-solid fa-trash text-xs"></i>
+                    <span>Delete</span>
+                </button>
+                
+                <div class="flex items-center space-x-2">
+                    <button type="button" onclick="document.getElementById('editTxModal').classList.add('hidden')" class="px-4 py-2 bg-slate-800 text-slate-300 rounded-xl font-semibold hover:bg-slate-700">Cancel</button>
+                    <button type="submit" class="px-4 py-2 bg-indigo-600 text-white rounded-xl font-semibold hover:bg-indigo-500 shadow-md shadow-indigo-600/30">Save Changes</button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- UPDATE BANK BALANCE MODAL -->
+<div id="updateFlowBankModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
+    <div class="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-md p-6 shadow-2xl space-y-4">
+        <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+            <h3 class="font-bold text-base text-white flex items-center space-x-2">
+                <i class="fa-solid fa-wallet text-emerald-400 text-sm"></i>
+                <span id="flowBankModalTitle">Update Bank Balance</span>
+            </h3>
+            <button onclick="document.getElementById('updateFlowBankModal').classList.add('hidden')" class="text-slate-400 hover:text-white">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+        </div>
+        <form id="flowBankForm" method="POST" action="" class="space-y-4 text-xs">
+            <input type="hidden" name="redirect_to" value="/flows">
+            <div>
+                <label class="block font-semibold text-slate-300 mb-1">Current Account Balance</label>
+                <input type="number" step="any" id="flow_bank_current_price" name="current_balance" value="0.0" required autofocus class="w-full bg-slate-950 border border-slate-800 text-white rounded-xl p-3 font-mono text-base font-bold focus:border-indigo-500">
+                <p class="text-[11px] text-slate-400 mt-1">Enter latest available balance for this bank account.</p>
+            </div>
+
+            <div class="pt-3 border-t border-slate-800 flex justify-end space-x-2">
+                <button type="button" onclick="document.getElementById('updateFlowBankModal').classList.add('hidden')" class="px-4 py-2 bg-slate-800 text-slate-300 rounded-xl font-semibold hover:bg-slate-700">Cancel</button>
+                <button type="submit" class="px-5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-bold shadow-md shadow-emerald-600/30">Save Balance</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    function openUpdateBankModal(assetId, assetName, currentPrice) {
+        document.getElementById('flowBankModalTitle').innerText = 'Update ' + assetName + ' Balance';
+        document.getElementById('flow_bank_current_price').value = currentPrice || 0.0;
+        document.getElementById('flowBankForm').action = '/assets/update-balance/' + assetId;
+        document.getElementById('updateFlowBankModal').classList.remove('hidden');
+    }
+    const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+    const monthShorts = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+    const categoriesData = [
+        {% for cat in categories %}
+        { id: {{ cat.id }}, name: "{{ cat.name }}", currency: "{{ cat.currency_code }}" }{% if not loop.last %},{% endif %}
+        {% endfor %}
+    ];
+
+    const rawTxs = [
+        {% for tx in transactions %}
+        {
+            id: {{ tx.id }},
+            asset_id: {{ tx.asset_id }},
+            asset_name: "{{ tx.asset_name }}",
+            category_id: {{ tx.category_id or 0 }},
+            category_name: "{{ tx.category_name }}",
+            currency: "{{ tx.currency_code }}",
+            type: "{{ tx.type }}",
+            raw_type: "{{ tx.raw_type }}",
+            units: {{ tx.units }},
+            price: {{ tx.price_per_unit }},
+            dateStr: "{{ tx.date.strftime('%Y-%m-%d') if tx.date else '' }}",
+            year: {{ tx.date.year if tx.date else 2026 }},
+            month: {{ tx.date.month if tx.date else 1 }},
+            amount_inr: {{ tx.amount_inr }},
+            amount_native: {{ (tx.price_per_unit * (tx.units if tx.type in ['BUY', 'SELL'] else 1.0)) }},
+            broker_id: "{{ tx.broker_id or '' }}",
+            broker_name: "{{ tx.broker_name or '' }}",
+            notes: "{{ tx.notes or '' }}"
+        }{% if not loop.last %},{% endif %}
+        {% endfor %}
+    ];
+
+    let currentPeriod = 'monthly';
+    let displayInINR = true;
+    let expandedCategories = new Set();
+
+    function setCurrencyDisplay(inr) {
+        displayInINR = inr;
+        document.getElementById('btn-curr-inr').className = inr ? "px-3 py-1 text-xs font-bold rounded-lg bg-indigo-600 text-white shadow-sm transition" : "px-3 py-1 text-xs font-semibold text-slate-400 hover:text-white transition";
+        document.getElementById('btn-curr-native').className = !inr ? "px-3 py-1 text-xs font-bold rounded-lg bg-indigo-600 text-white shadow-sm transition" : "px-3 py-1 text-xs font-semibold text-slate-400 hover:text-white transition";
+        renderFlowsView();
+    }
+
+    function setFlowPeriod(period) {
+        currentPeriod = period;
+        document.querySelectorAll('.flow-period-btn').forEach(btn => {
+            btn.className = "flow-period-btn px-3.5 py-1.5 rounded-lg text-xs font-semibold text-slate-400 hover:text-white transition";
+        });
+        const activeBtn = document.getElementById('btn-flow-' + period);
+        if (activeBtn) activeBtn.className = "flow-period-btn px-3.5 py-1.5 rounded-lg text-xs font-bold bg-indigo-600 text-white shadow-sm transition";
+
+        const mCont = document.getElementById('flow-month-container');
+        const yCont = document.getElementById('flow-year-container');
+
+        if (period === 'monthly') {
+            if (mCont) mCont.classList.remove('hidden');
+            if (yCont) yCont.classList.remove('hidden');
+        } else if (period === 'yearly') {
+            if (mCont) mCont.classList.add('hidden');
+            if (yCont) yCont.classList.remove('hidden');
+        } else {
+            if (mCont) mCont.classList.add('hidden');
+            if (yCont) yCont.classList.add('hidden');
+        }
+
+        renderFlowsView();
+    }
+
+    function toggleCategoryAccordion(catId) {
+        if (expandedCategories.has(catId)) {
+            expandedCategories.delete(catId);
+        } else {
+            expandedCategories.add(catId);
+        }
+        renderFlowsView();
+    }
+
+    function formatVal(num, currCode = 'INR') {
+        const symbol = displayInINR ? '₹' : (currCode === 'USD' ? '$' : '₹');
+        return symbol + num.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+
+    function formatValCompact(num) {
+        if (num === 0) return '-';
+        if (Math.abs(num) >= 10000000) return (num / 10000000).toFixed(1) + 'Cr';
+        if (Math.abs(num) >= 100000) return (num / 100000).toFixed(1) + 'L';
+        if (Math.abs(num) >= 1000) return (num / 1000).toFixed(1) + 'k';
+        return num.toFixed(0);
+    }
+
+    function openAssetTxPopup(assetId, assetName, categoryName) {
+        const selectedYear = parseInt(document.getElementById('flow-year-select')?.value || '2026');
+        const selectedMonth = parseInt(document.getElementById('flow-month-select')?.value || '1');
+
+        let assetTxs = rawTxs.filter(tx => tx.asset_id === assetId);
+        if (currentPeriod === 'monthly') {
+            assetTxs = assetTxs.filter(tx => tx.year === selectedYear && tx.month === selectedMonth);
+        } else if (currentPeriod === 'yearly') {
+            assetTxs = assetTxs.filter(tx => tx.year === selectedYear);
+        }
+
+        document.getElementById('modal-asset-title').innerText = assetName;
+        document.getElementById('modal-asset-subtitle').innerText = `${categoryName} • ${assetTxs.length} Transactions (${currentPeriod.toUpperCase()})`;
+
+        const tbody = document.getElementById('modal-asset-tx-tbody');
+        if (assetTxs.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="7" class="py-8 text-center text-slate-500 italic">No transactions found for this asset in the selected period.</td></tr>`;
+        } else {
+            tbody.innerHTML = assetTxs.map(tx => `
+                <tr onclick="openEditTxModal({id: ${tx.id}, type: '${tx.type}', raw_type: '${tx.raw_type}', date: '${tx.dateStr}', units: ${tx.units}, price_per_unit: ${tx.price}, broker_id: '${tx.broker_id}', notes: '${tx.notes}'})" class="hover:bg-slate-800/40 cursor-pointer transition">
+                    <td class="py-3 px-2 font-sans font-semibold text-white">
+                        <span class="px-2 py-0.5 rounded text-[10px] uppercase font-bold ${tx.type === 'BUY' ? 'bg-indigo-950 text-indigo-300 border border-indigo-500/30' : (tx.type === 'SELL' ? 'bg-rose-950 text-rose-300 border border-rose-500/30' : 'bg-amber-950 text-amber-300 border border-amber-500/30')}">
+                            ${tx.raw_type}
+                        </span>
+                    </td>
+                    <td class="py-3 px-2 text-slate-300">${tx.dateStr}</td>
+                    <td class="py-3 px-2 text-right text-slate-300">${tx.units.toFixed(4)}</td>
+                    <td class="py-3 px-2 text-right text-slate-300">${formatVal(tx.price, tx.currency)}</td>
+                    <td class="py-3 px-2 text-right font-bold ${tx.type === 'BUY' ? 'text-indigo-400' : 'text-emerald-400'}">${formatVal(tx.amount_native, tx.currency)}</td>
+                    <td class="py-3 px-2 font-sans text-slate-400">${tx.broker_name || '-'}</td>
+                    <td class="py-3 px-2 font-sans text-slate-400 max-w-[120px] truncate">${tx.notes || '-'}</td>
+                </tr>
+            `).join('');
+        }
+
+        document.getElementById('assetTxModal').classList.remove('hidden');
+        if (typeof paginateTable === 'function') {
+            paginateTable('modal-asset-tx-table', 10);
+        }
+    }
+
+    function renderFlowsView() {
+        const selectedYear = parseInt(document.getElementById('flow-year-select')?.value || '2026');
+        const selectedMonth = parseInt(document.getElementById('flow-month-select')?.value || '1');
+
+        let filtered = [];
+        if (currentPeriod === 'lifetime') {
+            filtered = rawTxs;
+        } else if (currentPeriod === 'yearly') {
+            filtered = rawTxs.filter(tx => tx.year === selectedYear);
+        } else {
+            filtered = rawTxs.filter(tx => tx.year === selectedYear && tx.month === selectedMonth);
+        }
+
+        // Compute Summary Totals
+        let totalInvested = 0.0;
+        let totalWithdrawn = 0.0;
+        let buyCount = 0;
+        let sellCount = 0;
+        let divCount = 0;
+
+        filtered.forEach(tx => {
+            const amt = displayInINR ? tx.amount_inr : tx.amount_native;
+            if (tx.type === 'BUY') {
+                totalInvested += amt;
+                buyCount++;
+            } else if (tx.type === 'SELL') {
+                totalWithdrawn += amt;
+                sellCount++;
+            } else if (tx.type === 'DIVIDEND') {
+                divCount++;
+            }
+        });
+
+        const netFlow = totalInvested - totalWithdrawn;
+
+        // Title
+        const titleEl = document.getElementById('flow-summary-title');
+        if (titleEl) {
+            if (currentPeriod === 'monthly') titleEl.innerText = `Summary & Activity for ${monthNames[selectedMonth - 1]} ${selectedYear}`;
+            else if (currentPeriod === 'yearly') titleEl.innerText = `Summary & Activity for ${selectedYear}`;
+            else titleEl.innerText = `Lifetime Summary & Activity (${ {{ starting_year }} } - ${ {{ current_year }} })`;
+        }
+
+        // Summary Amounts
+        document.getElementById('summary-total-invested').innerText = formatVal(totalInvested);
+        document.getElementById('summary-total-withdrawn').innerText = formatVal(totalWithdrawn);
+        
+        const netEl = document.getElementById('summary-net-flow');
+        netEl.innerText = (netFlow >= 0 ? '+' : '') + formatVal(netFlow);
+        netEl.className = "text-2xl font-extrabold font-mono mt-1 " + (netFlow >= 0 ? "text-indigo-400" : "text-rose-400");
+
+        // Trade Activity & Hold Discipline
+        document.getElementById('summary-trade-counts').innerText = `${buyCount} BUY · ${sellCount} SELL · ${divCount} DIV`;
+        
+        const totalTrades = buyCount + sellCount;
+        const buyPct = totalTrades > 0 ? ((buyCount / totalTrades) * 100.0).toFixed(1) : "100.0";
+        const holdEl = document.getElementById('summary-hold-discipline');
+        if (sellCount === 0) {
+            holdEl.innerText = "100% BUY (0 Sales)";
+            holdEl.className = "text-sm font-bold text-emerald-400 font-mono mt-0.5";
+        } else {
+            holdEl.innerText = `${buyPct}% BUY (${sellCount} Sales)`;
+            holdEl.className = "text-sm font-bold font-mono mt-0.5 " + (parseFloat(buyPct) >= 70 ? "text-emerald-400" : "text-amber-400");
+        }
+
+        // Render Breakdown View
+        const container = document.getElementById('flow-breakdown-container');
+        if (!container) return;
+
+        if (currentPeriod === 'monthly') {
+            renderMonthlyBreakdown(container, filtered);
+        } else if (currentPeriod === 'yearly') {
+            renderYearlyMatrix(container, selectedYear);
+        } else {
+            renderLifetimeMatrix(container);
+        }
+    }
+
+    function renderMonthlyBreakdown(container, filteredTxs) {
+        if (filteredTxs.length === 0) {
+            container.innerHTML = `
+                <div class="apple-card rounded-3xl p-12 text-center text-slate-400">
+                    <i class="fa-solid fa-arrow-up-right-from-circle text-3xl text-slate-600 mb-3 block"></i>
+                    <h4 class="font-bold text-sm text-white">No Activity</h4>
+                    <p class="text-xs text-slate-500 mt-1">No transactions logged in this period.</p>
+                </div>
+            `;
+            return;
+        }
+
+        const catMap = {};
+        filteredTxs.forEach(tx => {
+            const cid = tx.category_id || 0;
+            if (!catMap[cid]) {
+                catMap[cid] = {
+                    id: cid,
+                    name: tx.category_name || 'Category',
+                    currency: tx.currency,
+                    invested: 0,
+                    withdrawn: 0,
+                    buyCount: 0,
+                    sellCount: 0,
+                    divCount: 0,
+                    assets: {}
+                };
+            }
+            const c = catMap[cid];
+            const amt = displayInINR ? tx.amount_inr : tx.amount_native;
+            if (tx.type === 'BUY') {
+                c.invested += amt;
+                c.buyCount++;
+            } else if (tx.type === 'SELL') {
+                c.withdrawn += amt;
+                c.sellCount++;
+            } else if (tx.type === 'DIVIDEND') {
+                c.divCount++;
+            }
+
+            const aid = tx.asset_id;
+            if (!c.assets[aid]) {
+                c.assets[aid] = {
+                    id: aid,
+                    name: tx.asset_name,
+                    invested: 0,
+                    withdrawn: 0,
+                    buyCount: 0,
+                    sellCount: 0
+                };
+            }
+            const a = c.assets[aid];
+            if (tx.type === 'BUY') {
+                a.invested += amt;
+                a.buyCount++;
+            } else {
+                a.withdrawn += amt;
+                a.sellCount++;
+            }
+        });
+
+        let html = `<div class="apple-card rounded-3xl p-6 space-y-4">
+            <h4 class="font-bold text-sm text-white mb-2">Breakdown by Category &amp; Asset</h4>
+            <div class="space-y-3">`;
+
+        Object.values(catMap).forEach(cat => {
+            const isExpanded = expandedCategories.has(cat.id);
+            const net = cat.invested - cat.withdrawn;
+
+            html += `
+                <div class="border border-slate-800 rounded-2xl overflow-hidden bg-slate-900/60">
+                    <div onclick="toggleCategoryAccordion(${cat.id})" class="p-4 cursor-pointer hover:bg-slate-800/50 transition space-y-3">
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center space-x-2">
+                                <span class="font-bold text-sm text-white">${cat.name}</span>
+                                <span class="text-xs text-slate-500 font-mono">(${displayInINR ? 'INR ₹' : cat.currency})</span>
+                            </div>
+                            <div class="flex items-center space-x-3">
+                                <span class="px-2.5 py-0.5 text-[10px] font-bold rounded-full uppercase ${cat.sellCount === 0 ? 'bg-emerald-950 text-emerald-300 border border-emerald-500/30' : 'bg-amber-950 text-amber-300 border border-amber-500/30'}">
+                                    ${cat.buyCount}B / ${cat.sellCount}S / ${cat.divCount}D
+                                </span>
+                                <i class="fa-solid ${isExpanded ? 'fa-chevron-up' : 'fa-chevron-down'} text-xs text-slate-400"></i>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-3 gap-2 text-xs font-mono border-t border-slate-800/60 pt-2.5">
+                            <div>
+                                <span class="text-[10px] text-slate-500 block">Invested</span>
+                                <span class="font-bold text-white">${formatVal(cat.invested, cat.currency)}</span>
+                                <span class="text-[9px] text-emerald-400 block font-sans">${cat.buyCount} Buy Txs</span>
+                            </div>
+                            <div class="text-center">
+                                <span class="text-[10px] text-slate-500 block">Withdrawn</span>
+                                <span class="font-bold text-white">${formatVal(cat.withdrawn, cat.currency)}</span>
+                                <span class="text-[9px] ${cat.sellCount === 0 ? 'text-slate-500' : 'text-rose-400'} block font-sans">${cat.sellCount} Sell Txs</span>
+                            </div>
+                            <div class="text-right">
+                                <span class="text-[10px] text-slate-500 block">Net Flow</span>
+                                <span class="font-bold ${net >= 0 ? 'text-emerald-400' : 'text-rose-400'}">${formatVal(Math.abs(net), cat.currency)}</span>
+                                <span class="text-[9px] text-amber-400 block font-sans">${cat.divCount} Div Txs</span>
+                            </div>
+                        </div>
+                    </div>
+            `;
+
+            if (isExpanded) {
+                html += `<div class="bg-slate-950/60 border-t border-slate-800 px-4 py-3 space-y-2 text-xs font-mono">
+                    <div class="grid grid-cols-4 text-[10px] font-bold text-slate-500 uppercase tracking-wider pb-1 border-b border-slate-800/40">
+                        <span>Asset Name</span>
+                        <span class="text-right">Invested</span>
+                        <span class="text-right">Withdrawn</span>
+                        <span class="text-right">Transactions</span>
+                    </div>`;
+
+                Object.values(cat.assets).forEach(a => {
+                    const aNet = a.invested - a.withdrawn;
+                    html += `
+                        <div class="grid grid-cols-4 py-2 border-b border-slate-800/30 last:border-0 items-center">
+                            <span class="font-semibold text-slate-200 font-sans truncate">${a.name}</span>
+                            <span class="text-right text-slate-300">${a.invested > 0 ? formatVal(a.invested, cat.currency) : '-'} <em class="text-[9px] text-emerald-400 block">${a.buyCount}B</em></span>
+                            <span class="text-right text-slate-300">${a.withdrawn > 0 ? formatVal(a.withdrawn, cat.currency) : '-'} <em class="text-[9px] text-rose-400 block">${a.sellCount}S</em></span>
+                            <div class="text-right">
+                                <button type="button" onclick="openAssetTxPopup(${a.id}, '${a.name.replace(/'/g, "\\'")}', '${cat.name.replace(/'/g, "\\'")}')" class="px-2.5 py-1 bg-indigo-600/80 hover:bg-indigo-500 text-white rounded-lg font-sans font-bold text-[10px] transition">
+                                    View Txs
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                });
+
+                html += `</div>`;
+            }
+
+            html += `</div>`;
+        });
+
+        html += `</div></div>`;
+        container.innerHTML = html;
+    }
+
+    function renderYearlyMatrix(container, selectedYear) {
+        const yearTxs = rawTxs.filter(tx => tx.year === selectedYear);
+        if (yearTxs.length === 0) {
+            container.innerHTML = `<div class="apple-card rounded-3xl p-12 text-center text-slate-400"><h4 class="font-bold text-sm text-white">No Activity</h4><p class="text-xs text-slate-500 mt-1">No transactions logged in ${selectedYear}.</p></div>`;
+            return;
+        }
+
+        let html = `
+            <div class="apple-card rounded-3xl p-6 space-y-4">
+                <h4 class="font-bold text-sm text-white">Breakdown by Category &amp; Asset (Inflows &amp; Trades Matrix)</h4>
+                <div class="overflow-x-auto border border-slate-800 rounded-2xl">
+                    <table class="w-full text-left text-xs border-collapse font-mono">
+                        <thead>
+                            <tr class="bg-slate-950 border-b border-slate-800 text-slate-400 font-bold text-[10px] uppercase">
+                                <th class="p-3 min-w-[140px] sticky left-0 bg-slate-950 z-10">Category / Asset</th>
+                                ${monthShorts.map(m => `<th class="p-2 text-center min-w-[60px]">${m}</th>`).join('')}
+                                <th class="p-3 text-right min-w-[90px] sticky right-0 bg-slate-950 z-10">Year Total</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-800/60">
+        `;
+
+        categoriesData.forEach(cat => {
+            const catTxs = yearTxs.filter(tx => tx.category_id === cat.id);
+            if (catTxs.length === 0) return;
+
+            let catTotal = 0.0;
+            let catBuys = 0;
+            let catSells = 0;
+
+            const monthlyVal = {};
+            const monthlyCounts = {};
+            for (let m = 1; m <= 12; m++) {
+                monthlyVal[m] = 0.0;
+                monthlyCounts[m] = { buy: 0, sell: 0 };
+            }
+
+            catTxs.forEach(tx => {
+                const amt = displayInINR ? tx.amount_inr : tx.amount_native;
+                if (tx.type === 'BUY') {
+                    monthlyVal[tx.month] += amt;
+                    monthlyCounts[tx.month].buy++;
+                    catTotal += amt;
+                    catBuys++;
+                } else if (tx.type === 'SELL') {
+                    monthlyCounts[tx.month].sell++;
+                    catSells++;
+                }
+            });
+
+            html += `<tr class="bg-slate-900/90 font-bold">
+                <td class="p-3 text-indigo-400 sticky left-0 bg-slate-900 z-10 font-sans">${cat.name}</td>
+                ${monthShorts.map((_, i) => {
+                    const m = i + 1;
+                    const v = monthlyVal[m];
+                    const c = monthlyCounts[m];
+                    return `<td class="p-2 text-center text-[10px]">
+                        <div>${v > 0 ? formatValCompact(v) : '-'}</div>
+                        ${c.buy > 0 || c.sell > 0 ? `<div class="text-[8px] text-emerald-400 font-sans">${c.buy}B/${c.sell}S</div>` : ''}
+                    </td>`;
+                }).join('')}
+                <td class="p-3 text-right text-indigo-300 sticky right-0 bg-slate-900 z-10">
+                    <div>${formatValCompact(catTotal)}</div>
+                    <div class="text-[9px] text-emerald-400 font-sans">${catBuys}B/${catSells}S</div>
+                </td>
+            </tr>`;
+        });
+
+        html += `</tbody></table></div></div>`;
+        container.innerHTML = html;
+    }
+
+    function renderLifetimeMatrix(container) {
+        let html = `
+            <div class="apple-card rounded-3xl p-6 space-y-4">
+                <h4 class="font-bold text-sm text-white">Lifetime Net Flows &amp; Trade Activity (Decade View)</h4>
+                <div class="overflow-x-auto border border-slate-800 rounded-2xl">
+                    <table class="w-full text-left text-xs border-collapse font-mono">
+                        <thead>
+                            <tr class="bg-slate-950 border-b border-slate-800 text-slate-400 font-bold text-[10px] uppercase">
+                                <th class="p-3 min-w-[140px] sticky left-0 bg-slate-950 z-10">Category / Asset</th>
+                                {% for y in available_years %}
+                                <th class="p-2 text-center min-w-[70px]">{{ y }}</th>
+                                {% endfor %}
+                                <th class="p-3 text-right min-w-[100px] sticky right-0 bg-slate-950 z-10">Overall Net</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-800/60">
+        `;
+
+        categoriesData.forEach(cat => {
+            const catTxs = rawTxs.filter(tx => tx.category_id === cat.id);
+            if (catTxs.length === 0) return;
+
+            let overallNet = 0.0;
+            let totalBuys = 0;
+            let totalSells = 0;
+
+            const yearlyNet = {};
+            const yearlyCounts = {};
+            {% for y in available_years %}
+            yearlyNet[{{ y }}] = 0.0;
+            yearlyCounts[{{ y }}] = { buy: 0, sell: 0 };
+            {% endfor %}
+
+            catTxs.forEach(tx => {
+                const amt = displayInINR ? tx.amount_inr : tx.amount_native;
+                if (yearlyNet[tx.year] !== undefined) {
+                    if (tx.type === 'BUY') {
+                        yearlyNet[tx.year] += amt;
+                        yearlyCounts[tx.year].buy++;
+                        overallNet += amt;
+                        totalBuys++;
+                    } else if (tx.type === 'SELL') {
+                        yearlyNet[tx.year] -= amt;
+                        yearlyCounts[tx.year].sell++;
+                        overallNet -= amt;
+                        totalSells++;
+                    }
+                }
+            });
+
+            html += `<tr class="bg-slate-900/90 font-bold">
+                <td class="p-3 text-indigo-400 sticky left-0 bg-slate-900 z-10 font-sans">${cat.name}</td>
+                {% for y in available_years %}
+                <td class="p-2 text-center text-[10px]">
+                    <div class="${yearlyNet[{{y}}]>0?'text-emerald-400':(yearlyNet[{{y}}]<0?'text-rose-400':'text-slate-500')}">${yearlyNet[{{y}}]!==0?formatValCompact(yearlyNet[{{y}}]):'-'}</div>
+                    ${yearlyCounts[{{y}}].buy>0||yearlyCounts[{{y}}].sell>0?`<div class="text-[8px] text-emerald-400 font-sans">${yearlyCounts[{{y}}].buy}B/${yearlyCounts[{{y}}].sell}S</div>`:''}
+                </td>
+                {% endfor %}
+                <td class="p-3 text-right text-indigo-300 sticky right-0 bg-slate-900 z-10">
+                    <div>${formatValCompact(overallNet)}</div>
+                    <div class="text-[9px] text-emerald-400 font-sans">${totalBuys}B/${totalSells}S</div>
+                </td>
+            </tr>`;
+        });
+
+        html += `</tbody></table></div></div>`;
+        container.innerHTML = html;
+    }
+
+    function openEditTxModal(tx) {
+        if (!tx) return;
+        document.getElementById('edit_tx_id').value = tx.id;
+        document.getElementById('edit_tx_type').value = tx.type || 'BUY';
+        document.getElementById('edit_tx_date').value = tx.dateStr || '';
+        document.getElementById('edit_tx_units').value = tx.units || 0;
+        document.getElementById('edit_tx_price').value = tx.price_per_unit || tx.price || 0;
+        document.getElementById('edit_tx_broker_id').value = tx.broker_id || '';
+        document.getElementById('edit_tx_notes').value = tx.notes || '';
+        
+        document.getElementById('editTxForm').action = '/transactions/edit/' + tx.id;
+        document.getElementById('editTxModal').classList.remove('hidden');
+    }
+
+    async function deleteCurrentTx() {
+        const txId = document.getElementById('edit_tx_id').value;
+        if (!txId) return;
+        if (!confirm('Are you sure you want to delete this transaction entry?')) return;
+
+        try {
+            const res = await fetch('/transactions/delete/' + txId, {
+                method: 'POST',
+                headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' }
+            });
+            await res.json();
+            document.getElementById('editTxModal').classList.add('hidden');
+            if (typeof loadSpaPage === 'function') {
+                loadSpaPage(window.location.href, false);
+            } else {
+                window.location.reload();
+            }
+        } catch (err) {
+            console.error('Delete error:', err);
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        const currentMonth = new Date().getMonth() + 1;
+        const monthSel = document.getElementById('flow-month-select');
+        if (monthSel) monthSel.value = currentMonth.toString();
+        renderFlowsView();
+    });
+</script>
+{% endblock %}

@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+
+{% block title %}Portfolio Snapshots — iPortfolioTracker{% endblock %}
+{% block header_title %}Historical Networth Snapshots{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+
+    <!-- Top Action Bar -->
+    <div class="flex items-center justify-between bg-slate-900/80 border border-slate-800 rounded-2xl p-4 glass-panel">
+        <div>
+            <h3 class="font-bold text-base text-white">Networth Snapshots</h3>
+            <p class="text-xs text-slate-400">Save point-in-time portfolio values for historical comparison.</p>
+        </div>
+        <form method="POST" action="{{ url_for('snapshots.create_snapshot') }}" class="flex items-center space-x-2">
+            <input type="text" name="note" placeholder="Snapshot note (e.g. Month End)..." class="bg-slate-950 border border-slate-800 text-white text-xs rounded-xl px-3 py-2">
+            <button type="submit" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-xl shadow-lg shadow-indigo-600/30 transition">
+                <i class="fa-solid fa-camera mr-1"></i> Capture Snapshot
+            </button>
+        </form>
+    </div>
+
+    <!-- Snapshots List Grid -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        {% for snap in snapshots %}
+        <div class="bg-slate-900/80 border border-slate-800 rounded-2xl p-5 glass-panel hover:border-slate-700 transition flex flex-col justify-between space-y-3 cursor-pointer" onclick="window.location='{{ url_for('snapshots.detail', snap_id=snap.id) }}'">
+            <div>
+                <p class="text-xs font-bold text-slate-400">{{ snap.date | date_fmt }}</p>
+                <h4 class="text-2xl font-black text-white font-mono mt-1">{{ snap.total_value_inr | currency('INR') }}</h4>
+                <p class="text-xs text-slate-500 mt-1">Invested: {{ snap.total_invested_inr | currency('INR') }}</p>
+            </div>
+            {% if snap.note %}
+            <p class="text-xs text-indigo-300 italic bg-slate-950/60 p-2 rounded-xl border border-slate-800">{{ snap.note }}</p>
+            {% endif %}
+        </div>
+        {% else %}
+        <div class="col-span-3 bg-slate-900/80 border border-slate-800 rounded-2xl p-8 text-center text-slate-500 text-xs glass-panel">
+            No portfolio snapshots saved yet. Click "Capture Snapshot" above to record your current portfolio state.
+        </div>
+        {% endfor %}
+    </div>
+
+</div>
+{% endblock %}

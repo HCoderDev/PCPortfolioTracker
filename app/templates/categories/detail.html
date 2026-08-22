@@ -1,0 +1,462 @@
+{% extends "base.html" %}
+
+{% block title %}{{ category.name }} — Category Detail{% endblock %}
+{% block header_title %}{{ category.name }} Category{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+
+    <!-- Category Header Card -->
+    <div class="bg-gradient-to-r from-slate-900 via-indigo-950/60 to-slate-900 border border-indigo-500/30 rounded-3xl p-6 shadow-xl flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+        <div>
+            <div class="flex items-center space-x-3">
+                <h2 class="text-2xl font-black text-white tracking-tight">{{ category.name }}</h2>
+                <span class="px-2.5 py-1 bg-indigo-900/60 border border-indigo-500/30 text-indigo-300 font-mono text-xs font-bold rounded-lg">{{ category.currency_code }}</span>
+                {% if category.is_individual_equity %}
+                <span class="px-2 py-0.5 bg-indigo-950 text-indigo-300 border border-indigo-500/30 text-[10px] font-bold rounded-md uppercase">Equity</span>
+                {% endif %}
+            </div>
+            <p class="text-xs text-slate-400 mt-1">Target Allocation: {{ category.target_allocation }}% &middot; LTCG Threshold: {{ category.ltcg_threshold_months }} Months</p>
+        </div>
+
+        <div class="flex items-center space-x-2">
+            {% if category.currency_code != 'INR' %}
+            <div class="flex items-center bg-slate-950 p-1 rounded-xl border border-slate-800 shrink-0">
+                <button type="button" onclick="setCatCurrencyDisplay('INR')" id="btn-cat-curr-inr" class="px-3 py-1 text-xs font-bold rounded-lg bg-indigo-600 text-white shadow-sm transition">INR (₹) Default</button>
+                <button type="button" onclick="setCatCurrencyDisplay('{{ category.currency_code }}')" id="btn-cat-curr-native" class="px-3 py-1 text-xs font-semibold text-slate-400 hover:text-white transition">{{ category.currency_code }} ($)</button>
+            </div>
+            {% endif %}
+            <button type="button" onclick="openEditCatModal({id: {{ category.id }}, name: '{{ category.name.replace('\'', '\\\'') }}', currency_code: '{{ category.currency_code }}', target_allocation: {{ category.target_allocation }}, ltcg_threshold_months: {{ category.ltcg_threshold_months }}, last_inr_exchange_rate: {{ category.last_inr_exchange_rate }}, is_individual_equity: {{ 'true' if category.is_individual_equity else 'false' }}})" class="px-3.5 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs rounded-xl shadow-lg shadow-indigo-600/30 transition flex items-center space-x-1.5">
+                <i class="fa-solid fa-pen-to-square text-xs"></i>
+                <span>Edit Category</span>
+            </button>
+            <button onclick="document.getElementById('addSubCatModal').classList.remove('hidden')" class="px-3.5 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold text-xs rounded-xl border border-slate-700 transition">
+                + Add Sub-category
+            </button>
+        </div>
+    </div>
+
+    <!-- Category Metrics Grid -->
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div class="apple-card rounded-2xl p-4">
+            <p class="text-xs font-semibold text-slate-400">Total Invested</p>
+            <p id="cat-metric-inv" class="text-xl font-bold text-white font-mono mt-1">{{ (tot_inv * rate) | currency('INR') }}</p>
+        </div>
+        <div class="apple-card rounded-2xl p-4">
+            <p class="text-xs font-semibold text-slate-400">Current Value</p>
+            <p id="cat-metric-val" class="text-xl font-bold text-indigo-400 font-mono mt-1">{{ (tot_val * rate) | currency('INR') }}</p>
+        </div>
+        <div class="apple-card rounded-2xl p-4">
+            <p class="text-xs font-semibold text-slate-400">Unrealized P&amp;L</p>
+            <p id="cat-metric-gain" class="text-xl font-bold font-mono mt-1 {% if tot_gain >= 0 %}text-emerald-400{% else %}text-rose-400{% endif %}">
+                {% if tot_gain >= 0 %}+{% endif %}{{ (tot_gain * rate) | currency('INR') }} ({{ "%.2f"|format(tot_gain_pct) }}%)
+            </p>
+        </div>
+        <div class="apple-card rounded-2xl p-4">
+            <p class="text-xs font-semibold text-slate-400">INR Rate</p>
+            <p class="text-xl font-bold text-slate-300 font-mono mt-1">₹{{ "%.2f"|format(rate) }}</p>
+        </div>
+    </div>
+
+    <!-- Subcategories Pill Section -->
+    {% if subcategories %}
+    <div class="apple-card rounded-2xl p-4 flex items-center space-x-2 overflow-x-auto">
+        <span class="text-xs font-bold text-slate-400 mr-2 shrink-0">Sub-categories:</span>
+        {% for sc in subcategories %}
+        <span class="px-3 py-1 bg-slate-800 border border-slate-700/60 text-slate-200 text-xs font-medium rounded-xl shrink-0">{{ sc.name }}</span>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <!-- ALLOCATION PIE CHARTS SECTION (ASSET LEVEL & SUBCATEGORY LEVEL) -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <!-- Asset Level Allocation Pie Chart Card -->
+        {% if asset_allocations %}
+        <div class="apple-card rounded-3xl p-6 flex flex-col justify-between">
+            <div>
+                <div class="flex items-center justify-between mb-4">
+                    <div class="flex items-center space-x-3">
+                        <div class="w-8 h-8 rounded-xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400 font-bold">
+                            <i class="fa-solid fa-chart-pie text-xs"></i>
+                        </div>
+                        <div>
+                            <h3 class="font-semibold text-sm tracking-tight text-white">Asset Level Allocation</h3>
+                            <p class="text-xs text-slate-400">{{ asset_allocations|length }} active assets</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flex flex-col sm:flex-row items-center gap-6 pt-2">
+                    <div class="relative w-full max-w-[180px] aspect-square shrink-0">
+                        <canvas id="catAssetAllocationChart"></canvas>
+                    </div>
+
+                    <div class="w-full space-y-2 flex-1 max-h-[220px] overflow-y-auto pr-1">
+                        {% for item in asset_allocations %}
+                        <div class="flex items-center justify-between text-xs py-1.5 border-b border-slate-800/40 last:border-0">
+                            <div class="flex items-center space-x-2 truncate mr-2">
+                                <span class="w-2.5 h-2.5 rounded-full inline-block shrink-0 cat-asset-legend-dot" data-index="{{ loop.index0 }}"></span>
+                                <span class="font-medium text-slate-300 truncate">{{ item.label }}</span>
+                            </div>
+                            <div class="flex items-center space-x-2 font-mono shrink-0">
+                                <span class="text-slate-400 text-[11px]">{{ item.value | currency(category.currency_code) }}</span>
+                                <span class="font-semibold text-slate-200 w-11 text-right text-[11px]">{{ "%.1f"|format(item.pct) }}%</span>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Subcategory Level Allocation Pie Chart Card -->
+        {% if subcategory_allocations %}
+        <div class="apple-card rounded-3xl p-6 flex flex-col justify-between">
+            <div>
+                <div class="flex items-center justify-between mb-4">
+                    <div class="flex items-center space-x-3">
+                        <div class="w-8 h-8 rounded-xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-purple-400 font-bold">
+                            <i class="fa-solid fa-layer-group text-xs"></i>
+                        </div>
+                        <div>
+                            <h3 class="font-semibold text-sm tracking-tight text-white">Subcategory Allocation</h3>
+                            <p class="text-xs text-slate-400">{{ subcategory_allocations|length }} subcategories</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flex flex-col sm:flex-row items-center gap-6 pt-2">
+                    <div class="relative w-full max-w-[180px] aspect-square shrink-0">
+                        <canvas id="catSubCategoryAllocationChart"></canvas>
+                    </div>
+
+                    <div class="w-full space-y-2 flex-1 max-h-[220px] overflow-y-auto pr-1">
+                        {% for item in subcategory_allocations %}
+                        <div class="flex items-center justify-between text-xs py-1.5 border-b border-slate-800/40 last:border-0">
+                            <div class="flex items-center space-x-2 truncate mr-2">
+                                <span class="w-2.5 h-2.5 rounded-full inline-block shrink-0 cat-subcat-legend-dot" data-index="{{ loop.index0 }}"></span>
+                                <span class="font-medium text-slate-300 truncate">{{ item.label }}</span>
+                            </div>
+                            <div class="flex items-center space-x-2 font-mono shrink-0">
+                                <span class="text-slate-400 text-[11px]">{{ item.value | currency(category.currency_code) }}</span>
+                                <span class="font-semibold text-slate-200 w-11 text-right text-[11px]">{{ "%.1f"|format(item.pct) }}%</span>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Category Assets Table -->
+    <div class="apple-card rounded-3xl p-6 space-y-4">
+        <h3 class="font-bold text-base text-white">Assets in Category</h3>
+        <div class="overflow-x-auto">
+            <table data-paginate="10" class="w-full text-left text-xs border-collapse">
+                <thead>
+                    <tr class="bg-slate-950/60 border-b border-slate-800 font-bold uppercase tracking-wider text-slate-400">
+                        <th class="py-3 px-4">Asset Name</th>
+                        <th class="py-3 px-4 text-right">Units</th>
+                        <th class="py-3 px-4 text-right">Invested</th>
+                        <th class="py-3 px-4 text-right">Current Value</th>
+                        <th class="py-3 px-4 text-right">Gain / Loss</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-800/60 font-mono">
+                    {% for row in assets %}
+                    <tr class="hover:bg-slate-800/40 cursor-pointer transition" onclick="window.location='{{ url_for('assets.asset_detail', asset_id=row.asset.id) }}'">
+                        <td class="py-3 px-4 font-sans font-semibold text-white">{{ row.asset.name }}</td>
+                        <td class="py-3 px-4 text-right text-slate-300">{{ "%.4f"|format(row.units) }}</td>
+                        <td class="py-3 px-4 text-right text-slate-300">{{ row.invested | currency(category.currency_code) }}</td>
+                        <td class="py-3 px-4 text-right text-indigo-300 font-bold">{{ row.current_value | currency(category.currency_code) }}</td>
+                        <td class="py-3 px-4 text-right font-bold {% if row.gain_loss >= 0 %}text-emerald-400{% else %}text-rose-400{% endif %}">
+                            {% if row.gain_loss >= 0 %}+{% endif %}{{ row.gain_loss | currency(category.currency_code) }}
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="5" class="py-6 text-center text-slate-500 font-sans">No assets assigned to this category yet.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+</div>
+
+<!-- EDIT CATEGORY MODAL -->
+<div id="editCatModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
+    <div class="bg-slate-900 border border-slate-800 rounded-3xl w-full max-w-md p-6 shadow-2xl space-y-4">
+        <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+            <h3 class="font-bold text-base text-white flex items-center space-x-2">
+                <i class="fa-solid fa-pen-to-square text-indigo-400 text-sm"></i>
+                <span>Edit Category</span>
+            </h3>
+            <button onclick="document.getElementById('editCatModal').classList.add('hidden')" class="text-slate-400 hover:text-white">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+        </div>
+        <form id="editCatForm" method="POST" action="" class="space-y-3 text-xs">
+            <input type="hidden" id="edit_cat_id" name="cat_id" value="">
+            
+            <div>
+                <label class="block font-semibold text-slate-300 mb-1">Category Name</label>
+                <input type="text" id="edit_cat_name" name="name" required class="w-full bg-slate-950 border border-slate-800 text-white rounded-xl p-2.5 focus:border-indigo-500">
+            </div>
+
+            <div class="grid grid-cols-2 gap-3">
+                <div>
+                    <label class="block font-semibold text-slate-300 mb-1">Currency Code</label>
+                    <select id="edit_cat_currency_code" name="currency_code" class="w-full bg-slate-950 border border-slate-800 text-white rounded-xl p-2.5">
+                        {% for curr in currencies %}
+                        <option value="{{ curr.code }}">{{ curr.code }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div>
+                    <label class="block font-semibold text-slate-300 mb-1">Target Allocation %</label>
+                    <input type="number" step="any" id="edit_cat_target_allocation" name="target_allocation" required class="w-full bg-slate-950 border border-slate-800 text-white rounded-xl p-2.5">
+                </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-3">
+                <div>
+                    <label class="block font-semibold text-slate-300 mb-1">LTCG Holding Duration</label>
+                    <select id="edit_cat_ltcg_threshold_months" name="ltcg_threshold_months" class="w-full bg-slate-950 border border-slate-800 text-white rounded-xl p-2.5">
+                        <option value="12">12 Months (1 Year)</option>
+                        <option value="24">24 Months (2 Years)</option>
+                        <option value="36">36 Months (3 Years)</option>
+                        <option value="6">6 Months</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block font-semibold text-slate-300 mb-1">Exchange Rate to INR</label>
+                    <input type="number" step="any" id="edit_cat_last_inr_exchange_rate" name="last_inr_exchange_rate" required class="w-full bg-slate-950 border border-slate-800 text-white rounded-xl p-2.5">
+                </div>
+            </div>
+
+            <p class="text-[11px] text-slate-500 leading-snug">
+                Assets in this category held longer than the LTCG duration qualify for Long Term Capital Gains (LTCG). Shorter durations qualify as STCG.
+            </p>
+
+            <div class="flex items-center space-x-2 pt-1">
+                <input type="checkbox" id="edit_cat_is_individual_equity" name="is_individual_equity" class="rounded bg-slate-950 border-slate-800 text-indigo-600 focus:ring-0">
+                <label for="edit_cat_is_individual_equity" class="font-semibold text-slate-300">Is Individual Equity Category</label>
+            </div>
+
+            <div class="pt-3 border-t border-slate-800 flex items-center justify-between">
+                <button type="button" onclick="deleteCurrentCategory()" class="px-4 py-2 bg-rose-600/90 hover:bg-rose-500 text-white rounded-xl font-semibold transition shadow-md shadow-rose-600/20 flex items-center space-x-1.5">
+                    <i class="fa-solid fa-trash text-xs"></i>
+                    <span>Delete</span>
+                </button>
+
+                <div class="flex items-center space-x-2">
+                    <button type="button" onclick="document.getElementById('editCatModal').classList.add('hidden')" class="px-4 py-2 bg-slate-800 text-slate-300 rounded-xl font-semibold hover:bg-slate-700">Cancel</button>
+                    <button type="submit" class="px-4 py-2 bg-indigo-600 text-white rounded-xl font-semibold hover:bg-indigo-500 shadow-md shadow-indigo-600/30">Save Changes</button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- ADD SUBCATEGORY MODAL -->
+<div id="addSubCatModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
+    <div class="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-md p-6 shadow-2xl space-y-4">
+        <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+            <h3 class="font-bold text-base text-white">Add Sub-category</h3>
+            <button onclick="document.getElementById('addSubCatModal').classList.add('hidden')" class="text-slate-400 hover:text-white">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+        </div>
+        <form method="POST" action="{{ url_for('categories.add_subcategory') }}" class="space-y-3 text-xs">
+            <input type="hidden" name="category_id" value="{{ category.id }}">
+            <div>
+                <label class="block font-semibold text-slate-300 mb-1">Sub-category Name</label>
+                <input type="text" name="name" required placeholder="e.g. Large Cap" class="w-full bg-slate-950 border border-slate-800 text-white rounded-xl p-2.5">
+            </div>
+            <div class="pt-3 border-t border-slate-800 flex justify-end space-x-2">
+                <button type="button" onclick="document.getElementById('addSubCatModal').classList.add('hidden')" class="px-4 py-2 bg-slate-800 text-slate-300 rounded-xl font-semibold hover:bg-slate-700">Cancel</button>
+                <button type="submit" class="px-4 py-2 bg-indigo-600 text-white rounded-xl font-semibold hover:bg-indigo-500 shadow-md shadow-indigo-600/30">Save Sub-category</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    function openEditCatModal(cat) {
+        if (!cat) return;
+        document.getElementById('edit_cat_id').value = cat.id;
+        document.getElementById('edit_cat_name').value = cat.name || '';
+        document.getElementById('edit_cat_currency_code').value = cat.currency_code || 'INR';
+        document.getElementById('edit_cat_target_allocation').value = cat.target_allocation || 0.0;
+        document.getElementById('edit_cat_ltcg_threshold_months').value = (cat.ltcg_threshold_months || 12).toString();
+        document.getElementById('edit_cat_last_inr_exchange_rate').value = cat.last_inr_exchange_rate || 1.0;
+        document.getElementById('edit_cat_is_individual_equity').checked = !!cat.is_individual_equity;
+
+        document.getElementById('editCatForm').action = '/categories/edit/' + cat.id;
+        document.getElementById('editCatModal').classList.remove('hidden');
+    }
+
+    async function deleteCurrentCategory() {
+        const catId = document.getElementById('edit_cat_id').value;
+        if (!catId) return;
+        if (!confirm('Are you sure you want to delete this category? All associated subcategories will also be removed.')) return;
+
+        try {
+            const res = await fetch('/categories/delete/' + catId, {
+                method: 'POST',
+                headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' }
+            });
+            await res.json();
+            document.getElementById('editCatModal').classList.add('hidden');
+            if (typeof loadSpaPage === 'function') {
+                loadSpaPage('/categories', false);
+            } else {
+                window.location.href = '/categories';
+            }
+        } catch (err) {
+            console.error('Delete category error:', err);
+        }
+    }
+
+    function initCategoryPieCharts() {
+        const chartColors = [
+            '#6366f1', '#10b981', '#f59e0b', '#ec4899', '#8b5cf6', '#3b82f6', '#14b8a6', '#f97316', '#a855f7', '#06b6d4'
+        ];
+
+        // 1. Asset Level Allocation Chart
+        const assetCanvas = document.getElementById('catAssetAllocationChart');
+        if (assetCanvas) {
+            const existing = Chart.getChart(assetCanvas);
+            if (existing) existing.destroy();
+
+            const assetData = {{ asset_allocations | tojson }};
+            document.querySelectorAll('.cat-asset-legend-dot').forEach((dot, idx) => {
+                dot.style.backgroundColor = chartColors[idx % chartColors.length];
+            });
+
+            new Chart(assetCanvas.getContext('2d'), {
+                type: 'pie',
+                data: {
+                    labels: assetData.map(d => d.label),
+                    datasets: [{
+                        data: assetData.map(d => d.value),
+                        backgroundColor: chartColors,
+                        borderWidth: 0,
+                        hoverOffset: 6
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            backgroundColor: '#0f172a',
+                            titleFont: { family: '-apple-system, Inter', size: 12 },
+                            bodyFont: { family: '-apple-system, Inter', size: 12 },
+                            padding: 10,
+                            cornerRadius: 8,
+                            callbacks: {
+                                label: function(ctx) {
+                                    const val = ctx.parsed;
+                                    const total = ctx.dataset.data.reduce((a, b) => a + b, 0);
+                                    const pct = total > 0 ? ((val / total) * 100).toFixed(1) : "0.0";
+                                    const symbol = '{{ "₹" if category.currency_code == "INR" else ("$" if category.currency_code == "USD" else category.currency_code + " ") }}';
+                                    return ` ${symbol}${val.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} (${pct}%)`;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // 2. Subcategory Level Allocation Chart
+        const subcatCanvas = document.getElementById('catSubCategoryAllocationChart');
+        if (subcatCanvas) {
+            const existingSub = Chart.getChart(subcatCanvas);
+            if (existingSub) existingSub.destroy();
+
+            const subcatData = {{ subcategory_allocations | tojson }};
+            document.querySelectorAll('.cat-subcat-legend-dot').forEach((dot, idx) => {
+                dot.style.backgroundColor = chartColors[idx % chartColors.length];
+            });
+
+            new Chart(subcatCanvas.getContext('2d'), {
+                type: 'pie',
+                data: {
+                    labels: subcatData.map(d => d.label),
+                    datasets: [{
+                        data: subcatData.map(d => d.value),
+                        backgroundColor: chartColors,
+                        borderWidth: 0,
+                        hoverOffset: 6
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            backgroundColor: '#0f172a',
+                            titleFont: { family: '-apple-system, Inter', size: 12 },
+                            bodyFont: { family: '-apple-system, Inter', size: 12 },
+                            padding: 10,
+                            cornerRadius: 8,
+                            callbacks: {
+                                label: function(ctx) {
+                                    const val = ctx.parsed;
+                                    const total = ctx.dataset.data.reduce((a, b) => a + b, 0);
+                                    const pct = total > 0 ? ((val / total) * 100).toFixed(1) : "0.0";
+                                    const symbol = '{{ "₹" if category.currency_code == "INR" else ("$" if category.currency_code == "USD" else category.currency_code + " ") }}';
+                                    return ` ${symbol}${val.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} (${pct}%)`;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+    }
+
+    function setCatCurrencyDisplay(curr) {
+        const isINR = curr === 'INR';
+        const btnINR = document.getElementById('btn-cat-curr-inr');
+        const btnNative = document.getElementById('btn-cat-curr-native');
+
+        if (btnINR) btnINR.className = isINR ? "px-3 py-1 text-xs font-bold rounded-lg bg-indigo-600 text-white shadow-sm transition" : "px-3 py-1 text-xs font-semibold text-slate-400 hover:text-white transition";
+        if (btnNative) btnNative.className = !isINR ? "px-3 py-1 text-xs font-bold rounded-lg bg-indigo-600 text-white shadow-sm transition" : "px-3 py-1 text-xs font-semibold text-slate-400 hover:text-white transition";
+
+        const symbol = isINR ? '₹' : (curr === 'USD' ? '$' : curr + ' ');
+        const rate = isINR ? {{ rate }} : 1.0;
+
+        const inv = {{ tot_inv }} * rate;
+        const val = {{ tot_val }} * rate;
+        const gain = {{ tot_gain }} * rate;
+        const gainPct = {{ tot_gain_pct }};
+
+        const invEl = document.getElementById('cat-metric-inv');
+        if (invEl) invEl.innerText = symbol + inv.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+        const valEl = document.getElementById('cat-metric-val');
+        if (valEl) valEl.innerText = symbol + val.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+        const gainEl = document.getElementById('cat-metric-gain');
+        if (gainEl) {
+            const prefix = gain >= 0 ? '+' : '';
+            gainEl.innerText = `${prefix}${symbol}${gain.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} (${gainPct.toFixed(2)}%)`;
+            gainEl.className = "text-xl font-bold font-mono mt-1 " + (gain >= 0 ? "text-emerald-400" : "text-rose-400");
+        }
+    }
+
+    initCategoryPieCharts();
+</script>
+{% endblock %}

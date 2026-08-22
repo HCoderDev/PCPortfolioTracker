@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+
+{% block title %}Brokers — iPortfolioTracker{% endblock %}
+{% block header_title %}Manage Brokers{% endblock %}
+
+{% block content %}
+<div class="space-y-6 max-w-2xl">
+
+    <div class="bg-slate-900/80 border border-slate-800 rounded-2xl p-6 glass-panel space-y-4">
+        <div class="flex items-center justify-between">
+            <h3 class="font-bold text-base text-white">Brokers / Custodians</h3>
+            <button onclick="document.getElementById('addBrokerModal').classList.remove('hidden')" class="px-3.5 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-xl shadow-lg shadow-indigo-600/30">
+                + Add Broker
+            </button>
+        </div>
+
+        <div class="divide-y divide-slate-800/60 border border-slate-800 rounded-xl bg-slate-950/60">
+            {% for b in brokers %}
+            <div class="p-3.5 flex items-center justify-between text-xs">
+                <span class="font-semibold text-white">{{ b.name }}</span>
+                <form method="POST" action="{{ url_for('settings.delete_broker', broker_id=b.id) }}" onsubmit="return confirm('Delete broker?')">
+                    <button type="submit" class="text-slate-500 hover:text-rose-400">
+                        <i class="fa-solid fa-trash"></i>
+                    </button>
+                </form>
+            </div>
+            {% else %}
+            <div class="p-4 text-center text-slate-500 text-xs">No brokers added yet.</div>
+            {% endfor %}
+        </div>
+    </div>
+
+</div>
+
+<!-- Add Broker Modal -->
+<div id="addBrokerModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
+    <div class="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-md p-6 shadow-2xl space-y-4">
+        <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+            <h3 class="font-bold text-base text-white">Add Broker</h3>
+            <button onclick="document.getElementById('addBrokerModal').classList.add('hidden')" class="text-slate-400 hover:text-white">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+        </div>
+        <form method="POST" action="{{ url_for('settings.add_broker') }}" class="space-y-3 text-xs">
+            <div>
+                <label class="block font-semibold text-slate-300 mb-1">Broker / Platform Name</label>
+                <input type="text" name="name" required placeholder="e.g. Zerodha, IBKR, INDmoney" class="w-full bg-slate-950 border border-slate-800 text-white rounded-xl p-2.5">
+            </div>
+            <div class="pt-3 border-t border-slate-800 flex justify-end space-x-2">
+                <button type="button" onclick="document.getElementById('addBrokerModal').classList.add('hidden')" class="px-4 py-2 bg-slate-800 text-slate-300 rounded-xl font-semibold hover:bg-slate-700">Cancel</button>
+                <button type="submit" class="px-4 py-2 bg-indigo-600 text-white rounded-xl font-semibold hover:bg-indigo-500 shadow-md shadow-indigo-600/30">Save Broker</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

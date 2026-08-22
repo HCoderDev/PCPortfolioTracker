@@ -1,0 +1,373 @@
+{% extends "base.html" %}
+
+{% block title %}Categories — Portfolio Tracker{% endblock %}
+{% block header_title %}Asset Categories{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+
+    <!-- Top Action Toolbar -->
+    <div class="apple-card rounded-3xl p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div>
+            <h3 class="font-bold text-base text-white">Categories Breakdown</h3>
+            <p class="text-xs text-slate-400 mt-0.5">Manage target allocations, currencies, and LTCG tax threshold rules.</p>
+        </div>
+        <button onclick="document.getElementById('addCatModal').classList.remove('hidden')" class="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-xl shadow-lg shadow-indigo-600/30 transition flex items-center space-x-1.5 shrink-0">
+            <i class="fa-solid fa-plus text-xs"></i>
+            <span>Add Category</span>
+        </button>
+    </div>
+
+    <!-- Category Cards Grid -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {% for card in category_cards %}
+        <div class="apple-card rounded-3xl p-6 transition flex flex-col justify-between space-y-4">
+            <div>
+                <div class="flex items-start justify-between gap-2">
+                    <div>
+                        <a href="{{ url_for('categories.category_detail', cat_id=card.category.id) }}" class="font-extrabold text-lg text-white hover:text-indigo-400 transition block">
+                            {{ card.category.name }}
+                        </a>
+                        <div class="flex items-center space-x-2 mt-1 flex-wrap gap-y-1">
+                            <span class="px-2 py-0.5 bg-slate-900 border border-slate-800 text-indigo-300 text-[10px] font-mono font-bold rounded-md">
+                                {{ card.category.currency_code }}
+                            </span>
+                            {% if card.category.is_individual_equity %}
+                            <span class="px-2 py-0.5 bg-indigo-950 text-indigo-300 border border-indigo-500/30 text-[10px] font-bold rounded-md uppercase">
+                                Equity
+                            </span>
+                            {% endif %}
+                            <span class="text-xs text-slate-400">
+                                {{ card.assets_count }} Asset{% if card.assets_count != 1 %}s{% endif %} &middot; LTCG: {{ card.category.ltcg_threshold_months }}m
+                            </span>
+                        </div>
+                        {% if card.category.last_updated_date %}
+                        <div class="flex items-center space-x-1 mt-1 text-[11px] text-indigo-400 font-medium">
+                            <i class="fa-solid fa-clock-rotate-left text-[10px]"></i>
+                            <span>Data updated up to: {{ card.category.last_updated_date.strftime('%b %d, %Y %I:%M %p') }}</span>
+                        </div>
+                        {% endif %}
+                    </div>
+
+                    <!-- Quick Edit Button -->
+                    <button type="button" onclick="openEditCatModal({id: {{ card.category.id }}, name: '{{ card.category.name.replace('\'', '\\\'') }}', currency_code: '{{ card.category.currency_code }}', target_allocation: {{ card.category.target_allocation }}, ltcg_threshold_months: {{ card.category.ltcg_threshold_months }}, last_inr_exchange_rate: {{ card.category.last_inr_exchange_rate }}, is_individual_equity: {{ 'true' if card.category.is_individual_equity else 'false' }}})" class="w-8 h-8 rounded-xl bg-slate-800/80 hover:bg-slate-700 text-slate-300 hover:text-white transition flex items-center justify-center shrink-0" title="Edit Category">
+                        <i class="fa-solid fa-pen-to-square text-xs"></i>
+                    </button>
+                </div>
+
+                <div class="mt-4 grid grid-cols-2 gap-3 bg-slate-950/60 p-3 rounded-2xl border border-slate-800/80 font-mono text-xs">
+                    <div>
+                        <p class="text-[10px] font-sans font-semibold text-slate-400">Current Value (INR)</p>
+                        <p class="font-bold text-white mt-0.5">{{ card.current_value_inr | currency('INR') }}</p>
+                        {% if card.category.currency_code != 'INR' %}
+                        <p class="text-[9px] text-slate-400 font-sans mt-0.5">({{ card.current_value | currency(card.category.currency_code) }})</p>
+                        {% endif %}
+                    </div>
+                    <div>
+                        <p class="text-[10px] font-sans font-semibold text-slate-400">Target / Actual %</p>
+                        <p class="font-bold text-indigo-400 mt-0.5">{{ "%.1f"|format(card.category.target_allocation) }}% / {{ "%.1f"|format(card.actual_allocation_pct) }}%</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="flex items-center justify-between pt-3 border-t border-slate-800/80 text-xs">
+                <span class="font-mono font-semibold {% if card.gain_loss >= 0 %}text-emerald-400{% else %}text-rose-400{% endif %}">
+                    P&amp;L: {% if card.gain_loss >= 0 %}+{% endif %}{{ (card.gain_loss * card.rate) | currency('INR') }}
+                </span>
+                <div class="flex items-center space-x-3">
+                    <button type="button" onclick="openEditCatModal({id: {{ card.category.id }}, name: '{{ card.category.name.replace('\'', '\\\'') }}', currency_code: '{{ card.category.currency_code }}', target_allocation: {{ card.category.target_allocation }}, ltcg_threshold_months: {{ card.category.ltcg_threshold_months }}, last_inr_exchange_rate: {{ card.category.last_inr_exchange_rate }}, is_individual_equity: {{ 'true' if card.category.is_individual_equity else 'false' }}})" class="font-semibold text-slate-400 hover:text-white transition">
+                        Edit
+                    </button>
+                    <a href="{{ url_for('categories.category_detail', cat_id=card.category.id) }}" class="font-semibold text-indigo-400 hover:text-indigo-300 transition">
+                        Manage &rarr;
+                    </a>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+</div>
+
+<!-- ADD CATEGORY MODAL -->
+<div id="addCatModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
+    <div class="bg-slate-900 border border-slate-800 rounded-3xl w-full max-w-md p-6 shadow-2xl space-y-4">
+        <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+            <h3 class="font-bold text-base text-white">Add Category</h3>
+            <button onclick="document.getElementById('addCatModal').classList.add('hidden')" class="text-slate-400 hover:text-white">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+        </div>
+        <form method="POST" action="{{ url_for('categories.add_category') }}" class="space-y-3 text-xs">
+            <div>
+                <label class="block font-semibold text-slate-300 mb-1">Category Name</label>
+                <input type="text" name="name" required placeholder="e.g. Indian Equity Mutual Funds" class="w-full bg-slate-950 border border-slate-800 text-white rounded-xl p-2.5 focus:border-indigo-500">
+            </div>
+
+            <div class="grid grid-cols-2 gap-3">
+                <div>
+                    <label class="block font-semibold text-slate-300 mb-1">Currency Code</label>
+                    <select name="currency_code" class="w-full bg-slate-950 border border-slate-800 text-white rounded-xl p-2.5">
+                        {% for curr in currencies %}
+                        <option value="{{ curr.code }}">{{ curr.code }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div>
+                    <label class="block font-semibold text-slate-300 mb-1">Target Allocation %</label>
+                    <input type="number" step="any" name="target_allocation" value="0.0" class="w-full bg-slate-950 border border-slate-800 text-white rounded-xl p-2.5">
+                </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-3">
+                <div>
+                    <label class="block font-semibold text-slate-300 mb-1">LTCG Holding Duration</label>
+                    <select name="ltcg_threshold_months" class="w-full bg-slate-950 border border-slate-800 text-white rounded-xl p-2.5">
+                        <option value="12">12 Months (1 Year)</option>
+                        <option value="24">24 Months (2 Years)</option>
+                        <option value="36">36 Months (3 Years)</option>
+                        <option value="6">6 Months</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block font-semibold text-slate-300 mb-1">Exchange Rate to INR</label>
+                    <input type="number" step="any" name="last_inr_exchange_rate" value="1.0" class="w-full bg-slate-950 border border-slate-800 text-white rounded-xl p-2.5">
+                </div>
+            </div>
+
+            <div class="flex items-center space-x-2 pt-1">
+                <input type="checkbox" id="add_is_individual_equity" name="is_individual_equity" class="rounded bg-slate-950 border-slate-800 text-indigo-600 focus:ring-0">
+                <label for="add_is_individual_equity" class="font-semibold text-slate-300">Is Individual Equity Category</label>
+            </div>
+
+            <!-- Passive Income Rules Section -->
+            <div class="pt-2 border-t border-slate-800/80 space-y-2">
+                <p class="font-semibold text-slate-300 text-xs">Passive Income Rules</p>
+                <p class="text-[11px] text-slate-400">Select transaction types that qualify as Passive Income for assets in this category:</p>
+                <div class="space-y-1.5 bg-slate-950 p-2.5 rounded-xl border border-slate-800/80">
+                    <label class="flex items-center space-x-2 text-xs text-slate-300">
+                        <input type="checkbox" name="passive_types" value="DIVIDEND" checked class="rounded bg-slate-900 border-slate-700 text-indigo-600">
+                        <span><i class="fa-solid fa-gift text-indigo-400 mr-1"></i> Dividend Received (DIVIDEND)</span>
+                    </label>
+                    <label class="flex items-center space-x-2 text-xs text-slate-300">
+                        <input type="checkbox" name="passive_types" value="INTEREST" checked class="rounded bg-slate-900 border-slate-700 text-indigo-600">
+                        <span><i class="fa-solid fa-percent text-indigo-400 mr-1"></i> Interest Credited (INTEREST)</span>
+                    </label>
+                    <label class="flex items-center space-x-2 text-xs text-slate-300">
+                        <input type="checkbox" name="passive_types" value="INTEREST_PAYOUT" checked class="rounded bg-slate-900 border-slate-700 text-indigo-600">
+                        <span><i class="fa-solid fa-money-bill-wave text-indigo-400 mr-1"></i> Interest Payout (INTEREST_PAYOUT)</span>
+                    </label>
+                    <label class="flex items-center space-x-2 text-xs text-slate-300">
+                        <input type="checkbox" name="passive_types" value="BONUS" checked class="rounded bg-slate-900 border-slate-700 text-indigo-600">
+                        <span><i class="fa-solid fa-star text-indigo-400 mr-1"></i> Accrued Reversionary Bonus (BONUS)</span>
+                    </label>
+                    <label class="flex items-center space-x-2 text-xs text-slate-300">
+                        <input type="checkbox" name="passive_types" value="SURVIVAL_BENEFIT" checked class="rounded bg-slate-900 border-slate-700 text-indigo-600">
+                        <span><i class="fa-solid fa-gift text-indigo-400 mr-1"></i> Survival / Money-Back Benefit (SURVIVAL_BENEFIT)</span>
+                    </label>
+                </div>
+            </div>
+
+            <!-- Data Freshness / Updated Up To Section -->
+            <div class="pt-2 border-t border-slate-800/80 space-y-2">
+                <div class="flex items-center justify-between">
+                    <label for="add_track_last_updated" class="font-semibold text-slate-300">Track Last Updated Date</label>
+                    <input type="checkbox" id="add_track_last_updated" name="track_last_updated" onchange="document.getElementById('add_updated_date_container').classList.toggle('hidden', !this.checked)" class="rounded bg-slate-950 border-slate-800 text-indigo-600 focus:ring-0">
+                </div>
+                <div id="add_updated_date_container" class="hidden space-y-1.5">
+                    <input type="datetime-local" id="add_last_updated_date" name="last_updated_date" class="w-full bg-slate-950 border border-slate-800 text-white rounded-xl p-2.5 focus:border-indigo-500">
+                    <button type="button" onclick="setAddDateToNow()" class="text-[11px] font-semibold text-indigo-400 hover:text-indigo-300 flex items-center space-x-1">
+                        <i class="fa-solid fa-clock-rotate-left"></i>
+                        <span>Set to Current Date &amp; Time Today</span>
+                    </button>
+                </div>
+            </div>
+
+            <div class="pt-3 border-t border-slate-800 flex justify-end space-x-2">
+                <button type="button" onclick="document.getElementById('addCatModal').classList.add('hidden')" class="px-4 py-2 bg-slate-800 text-slate-300 rounded-xl font-semibold hover:bg-slate-700">Cancel</button>
+                <button type="submit" class="px-4 py-2 bg-indigo-600 text-white rounded-xl font-semibold hover:bg-indigo-500 shadow-md shadow-indigo-600/30">Save Category</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- EDIT CATEGORY MODAL -->
+<div id="editCatModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
+    <div class="bg-slate-900 border border-slate-800 rounded-3xl w-full max-w-md p-6 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
+        <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+            <h3 class="font-bold text-base text-white flex items-center space-x-2">
+                <i class="fa-solid fa-pen-to-square text-indigo-400 text-sm"></i>
+                <span>Edit Category</span>
+            </h3>
+            <button onclick="document.getElementById('editCatModal').classList.add('hidden')" class="text-slate-400 hover:text-white">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+        </div>
+        <form id="editCatForm" method="POST" action="" class="space-y-3 text-xs">
+            <input type="hidden" id="edit_cat_id" name="cat_id" value="">
+            
+            <div>
+                <label class="block font-semibold text-slate-300 mb-1">Category Name</label>
+                <input type="text" id="edit_cat_name" name="name" required class="w-full bg-slate-950 border border-slate-800 text-white rounded-xl p-2.5 focus:border-indigo-500">
+            </div>
+
+            <div class="grid grid-cols-2 gap-3">
+                <div>
+                    <label class="block font-semibold text-slate-300 mb-1">Currency Code</label>
+                    <select id="edit_cat_currency_code" name="currency_code" class="w-full bg-slate-950 border border-slate-800 text-white rounded-xl p-2.5">
+                        {% for curr in currencies %}
+                        <option value="{{ curr.code }}">{{ curr.code }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div>
+                    <label class="block font-semibold text-slate-300 mb-1">Target Allocation %</label>
+                    <input type="number" step="any" id="edit_cat_target_allocation" name="target_allocation" required class="w-full bg-slate-950 border border-slate-800 text-white rounded-xl p-2.5">
+                </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-3">
+                <div>
+                    <label class="block font-semibold text-slate-300 mb-1">LTCG Holding Duration</label>
+                    <select id="edit_cat_ltcg_threshold_months" name="ltcg_threshold_months" class="w-full bg-slate-950 border border-slate-800 text-white rounded-xl p-2.5">
+                        <option value="12">12 Months (1 Year)</option>
+                        <option value="24">24 Months (2 Years)</option>
+                        <option value="36">36 Months (3 Years)</option>
+                        <option value="6">6 Months</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block font-semibold text-slate-300 mb-1">Exchange Rate to INR</label>
+                    <input type="number" step="any" id="edit_cat_last_inr_exchange_rate" name="last_inr_exchange_rate" required class="w-full bg-slate-950 border border-slate-800 text-white rounded-xl p-2.5">
+                </div>
+            </div>
+
+            <p class="text-[11px] text-slate-500 leading-snug">
+                Assets in this category held longer than the LTCG duration qualify for Long Term Capital Gains (LTCG). Shorter durations qualify as STCG.
+            </p>
+
+            <div class="flex items-center space-x-2 pt-1">
+                <input type="checkbox" id="edit_cat_is_individual_equity" name="is_individual_equity" class="rounded bg-slate-950 border-slate-800 text-indigo-600 focus:ring-0">
+                <label for="edit_cat_is_individual_equity" class="font-semibold text-slate-300">Is Individual Equity Category</label>
+            </div>
+
+            <!-- Passive Income Rules Section -->
+            <div class="pt-2 border-t border-slate-800/80 space-y-2">
+                <p class="font-semibold text-slate-300 text-xs">Passive Income Rules for Category</p>
+                <p class="text-[11px] text-slate-400">Select transaction types that qualify as Passive Income for assets in this category:</p>
+                <div id="edit_passive_types_container" class="space-y-1.5 bg-slate-950 p-2.5 rounded-xl border border-slate-800/80">
+                    <!-- Populated dynamically via AJAX -->
+                </div>
+            </div>
+
+            <!-- Data Freshness / Updated Up To Section -->
+            <div class="pt-2 border-t border-slate-800/80 space-y-2">
+                <div class="flex items-center justify-between">
+                    <label for="edit_track_last_updated" class="font-semibold text-slate-300">Track Last Updated Date</label>
+                    <input type="checkbox" id="edit_track_last_updated" name="track_last_updated" onchange="document.getElementById('edit_updated_date_container').classList.toggle('hidden', !this.checked)" class="rounded bg-slate-950 border-slate-800 text-indigo-600 focus:ring-0">
+                </div>
+                <div id="edit_updated_date_container" class="hidden space-y-1.5">
+                    <input type="datetime-local" id="edit_last_updated_date" name="last_updated_date" class="w-full bg-slate-950 border border-slate-800 text-white rounded-xl p-2.5 focus:border-indigo-500">
+                    <button type="button" onclick="setEditDateToNow()" class="text-[11px] font-semibold text-indigo-400 hover:text-indigo-300 flex items-center space-x-1">
+                        <i class="fa-solid fa-clock-rotate-left"></i>
+                        <span>Set to Current Date &amp; Time Today</span>
+                    </button>
+                </div>
+            </div>
+
+            <div class="pt-3 border-t border-slate-800 flex items-center justify-between">
+                <button type="button" onclick="deleteCurrentCategory()" class="px-4 py-2 bg-rose-600/90 hover:bg-rose-500 text-white rounded-xl font-semibold transition shadow-md shadow-rose-600/20 flex items-center space-x-1.5">
+                    <i class="fa-solid fa-trash text-xs"></i>
+                    <span>Delete</span>
+                </button>
+
+                <div class="flex items-center space-x-2">
+                    <button type="button" onclick="document.getElementById('editCatModal').classList.add('hidden')" class="px-4 py-2 bg-slate-800 text-slate-300 rounded-xl font-semibold hover:bg-slate-700">Cancel</button>
+                    <button type="submit" class="px-4 py-2 bg-indigo-600 text-white rounded-xl font-semibold hover:bg-indigo-500 shadow-md shadow-indigo-600/30">Save Changes</button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    function setAddDateToNow() {
+        const now = new Date();
+        now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+        document.getElementById('add_last_updated_date').value = now.toISOString().slice(0, 16);
+    }
+
+    function setEditDateToNow() {
+        const now = new Date();
+        now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+        document.getElementById('edit_last_updated_date').value = now.toISOString().slice(0, 16);
+    }
+
+    async function openEditCatModal(cat) {
+        if (!cat) return;
+        document.getElementById('edit_cat_id').value = cat.id;
+        document.getElementById('edit_cat_name').value = cat.name || '';
+        document.getElementById('edit_cat_currency_code').value = cat.currency_code || 'INR';
+        document.getElementById('edit_cat_target_allocation').value = cat.target_allocation || 0.0;
+        document.getElementById('edit_cat_ltcg_threshold_months').value = (cat.ltcg_threshold_months || 12).toString();
+        document.getElementById('edit_cat_last_inr_exchange_rate').value = cat.last_inr_exchange_rate || 1.0;
+        document.getElementById('edit_cat_is_individual_equity').checked = !!cat.is_individual_equity;
+
+        document.getElementById('editCatForm').action = '/categories/edit/' + cat.id;
+
+        // Fetch allowed passive types for this category
+        const container = document.getElementById('edit_passive_types_container');
+        if (container) {
+            container.innerHTML = '<p class="text-[11px] text-slate-500">Loading passive income rules...</p>';
+            try {
+                const res = await fetch('/categories/allowed-passive-types/' + cat.id);
+                const data = await res.json();
+                const allowed = data.allowed || [];
+                const current = data.current || [];
+
+                if (allowed.length === 0) {
+                    container.innerHTML = '<p class="text-[11px] text-slate-500">No passive income rules configured for this category.</p>';
+                } else {
+                    container.innerHTML = allowed.map(item => {
+                        const isChecked = current.includes(item.id) || current.some(c => item.id.includes(c));
+                        return `
+                            <label class="flex items-center space-x-2 text-xs text-slate-300">
+                                <input type="checkbox" name="passive_types" value="${item.id}" ${isChecked ? 'checked' : ''} class="rounded bg-slate-900 border-slate-700 text-indigo-600">
+                                <span><i class="${item.icon || 'fa-solid fa-tag'} text-indigo-400 mr-1"></i> ${item.name} (${item.id})</span>
+                            </label>
+                        `;
+                    }).join('');
+                }
+            } catch (err) {
+                console.error('Error fetching passive types:', err);
+            }
+        }
+
+        document.getElementById('editCatModal').classList.remove('hidden');
+    }
+
+    async function deleteCurrentCategory() {
+        const catId = document.getElementById('edit_cat_id').value;
+        if (!catId) return;
+        if (!confirm('Are you sure you want to delete this category? All associated subcategories will also be removed.')) return;
+
+        try {
+            const res = await fetch('/categories/delete/' + catId, {
+                method: 'POST',
+                headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' }
+            });
+            await res.json();
+            document.getElementById('editCatModal').classList.add('hidden');
+            if (typeof loadSpaPage === 'function') {
+                loadSpaPage('/categories', false);
+            } else {
+                window.location.href = '/categories';
+            }
+        } catch (err) {
+            console.error('Delete category error:', err);
+        }
+    }
+</script>
+{% endblock %}
