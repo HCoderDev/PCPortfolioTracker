@@ -3,7 +3,7 @@ import os
 from config import Config
 from app.db import close_db
 from app.utils.formatters import format_currency, format_percent, format_number, format_inr_commas
-from app.utils.date_utils import format_date
+from app.utils.date_utils import format_date, format_iso_date
 
 import sys
 
@@ -27,6 +27,7 @@ def create_app(config_class=Config):
     app.jinja_env.filters['number'] = format_number
     app.jinja_env.filters['inr_comma'] = format_inr_commas
     app.jinja_env.filters['date_fmt'] = format_date
+    app.jinja_env.filters['date_iso'] = format_iso_date
     app.jinja_env.filters['abs'] = abs
     app.jinja_env.globals['abs'] = abs
 

@@ -4,9 +4,11 @@ from app.repositories.asset_repository import AssetRepository
 from app.repositories.currency_repository import CurrencyRepository
 from app.repositories.transaction_repository import TransactionRepository
 from app.repositories.reminder_repository import ReminderRepository
+from app.repositories.user_repository import UserRepository
 from app.services.portfolio_service import PortfolioService
 from app.services.fi_service import FiService
 from app.services.xirr_service import XirrService
+from app.utils.date_utils import parse_iso_date
 from datetime import datetime, timezone
 
 dashboard_bp = Blueprint('dashboard', __name__)
@@ -46,26 +48,27 @@ def index():
 
             inv_inr = PortfolioService.invested_value_inr(asset, txs, inr_rate)
             val_inr = PortfolioService.current_value_inr(asset, txs, inr_rate)
+            inv_native = PortfolioService.invested_value(asset, txs)
+            val_native = PortfolioService.current_value(asset, txs)
 
-            inv = inv_inr if display_currency == "INR" else PortfolioService.invested_value(asset, txs)
-            val = val_inr if display_currency == "INR" else PortfolioService.current_value(asset, txs)
-
-            cat_invested += inv
-            cat_current_val += val
+            cat_invested += inv_native
+            cat_current_val += val_native
             cat_val_inr += val_inr
             cat_inv_inr += inv_inr
 
-            gain_loss = val - inv
-            gain_loss_pct = ((val - inv) / inv * 100.0) if inv > 0 else 0.0
+            gain_loss_inr = val_inr - inv_inr
+            gain_loss_pct = ((val_inr - inv_inr) / inv_inr * 100.0) if inv_inr > 0 else 0.0
 
             if gain_loss_pct < -10.0:
                 underperforming_count += 1
 
             asset_rows.append({
                 'asset': asset,
-                'value': val,
-                'invested': inv,
-                'gain_loss': gain_loss,
+                'value': val_inr,
+                'invested': inv_inr,
+                'value_native': val_native,
+                'invested_native': inv_native,
+                'gain_loss': gain_loss_inr,
                 'gain_loss_pct': gain_loss_pct
             })
 
@@ -85,13 +88,19 @@ def index():
                 'value': cat_val_inr
             })
 
+        cat_gain_loss_inr = cat_val_inr - cat_inv_inr
+        cat_gain_loss_pct = (cat_gain_loss_inr / cat_inv_inr * 100.0) if cat_inv_inr > 0 else 0.0
+
         category_cards.append({
             'category': cat,
-            'invested': cat_invested,
-            'current_value': cat_current_val,
+            'invested': cat_inv_inr,
+            'current_value': cat_val_inr,
+            'invested_native': cat_invested,
+            'current_value_native': cat_current_val,
             'cat_val_inr': cat_val_inr,
-            'gain_loss': cat_current_val - cat_invested,
-            'gain_loss_pct': ((cat_current_val - cat_invested) / cat_invested * 100.0) if cat_invested > 0 else 0.0,
+            'cat_inv_inr': cat_inv_inr,
+            'gain_loss': cat_gain_loss_inr,
+            'gain_loss_pct': cat_gain_loss_pct,
             'assets': asset_rows
         })
 
@@ -175,13 +184,18 @@ def index():
             break
 
     # FI Progress Summary
+    user = UserRepository.get_user() or {}
+    birth_date_str = user.get('birth_date') or "1996-01-01"
+    birth_date = parse_iso_date(birth_date_str) if birth_date_str else datetime(1996, 1, 1, tzinfo=timezone.utc)
+
     fi_result = FiService.project_fi(
         current_net_worth=total_networth_inr,
-        target_goal=FiService.DEFAULT_TARGET_GOAL,
-        birth_date=datetime(1996, 1, 1, tzinfo=timezone.utc),
-        monthly_sip=FiService.DEFAULT_MONTHLY_SIP,
-        return_rate=FiService.DEFAULT_RETURN_RATE,
-        inflation_rate=FiService.DEFAULT_INFLATION_RATE
+        target_goal=user.get('target_goal') if user.get('target_goal') is not None else FiService.DEFAULT_TARGET_GOAL,
+        birth_date=birth_date,
+        monthly_sip=user.get('monthly_sip') if user.get('monthly_sip') is not None else FiService.DEFAULT_MONTHLY_SIP,
+        return_rate=user.get('return_rate') if user.get('return_rate') is not None else FiService.DEFAULT_RETURN_RATE,
+        inflation_rate=user.get('inflation_rate') if user.get('inflation_rate') is not None else FiService.DEFAULT_INFLATION_RATE,
+        safe_withdrawal_rate=user.get('swr') if user.get('swr') is not None else FiService.DEFAULT_SWR
     )
 
     return render_template(

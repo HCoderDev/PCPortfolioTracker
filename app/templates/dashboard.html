@@ -158,13 +158,16 @@
                             {{ card.assets|length }} asset{% if card.assets|length != 1 %}s{% endif %}
                         </td>
                         <td class="py-3.5 text-right font-mono font-semibold text-white">
-                            {{ card.current_value | currency(card.category.currency_code) }}
+                            {{ card.cat_val_inr | currency('INR') }}
+                            {% if card.category.currency_code != 'INR' %}
+                            <span class="text-[9px] text-slate-400 font-sans block">({{ card.current_value_native | currency(card.category.currency_code) }})</span>
+                            {% endif %}
                         </td>
                         <td class="py-3.5 text-right font-mono text-slate-300">
                             {{ "%.1f"|format(card.allocation_pct) }}%
                         </td>
                         <td class="py-3.5 text-right font-mono font-semibold {% if card.gain_loss >= 0 %}text-emerald-400{% else %}text-rose-400{% endif %}">
-                            {% if card.gain_loss >= 0 %}+{% endif %}{{ card.gain_loss | currency(card.category.currency_code) }} ({{ "%.2f"|format(card.gain_loss_pct) }}%)
+                            {% if card.gain_loss >= 0 %}+{% endif %}{{ card.gain_loss | currency('INR') }} ({{ "%.2f"|format(card.gain_loss_pct) }}%)
                         </td>
                         <td class="py-3.5 pr-2 text-center text-slate-500">
                             <button type="button" class="w-6 h-6 rounded-lg bg-slate-800/50 hover:bg-slate-700/60 text-slate-400 hover:text-white flex items-center justify-center mx-auto transition">
@@ -184,10 +187,13 @@
                                     <a href="{{ url_for('assets.asset_detail', asset_id=row.asset.id) }}" class="flex items-center justify-between p-2.5 rounded-xl bg-slate-900/60 border border-slate-800/60 hover:border-slate-700 hover:bg-slate-800/50 transition">
                                         <div class="truncate mr-2">
                                             <p class="font-medium text-slate-200 truncate">{{ row.asset.name }}</p>
-                                            <p class="text-[10px] text-slate-500">Cost: {{ row.invested | currency(card.category.currency_code) }}</p>
+                                            <p class="text-[10px] text-slate-500">Cost: {{ row.invested | currency('INR') }}</p>
                                         </div>
                                         <div class="text-right font-mono shrink-0">
-                                            <p class="font-semibold text-indigo-300">{{ row.value | currency(card.category.currency_code) }}</p>
+                                            <p class="font-semibold text-indigo-300">{{ row.value | currency('INR') }}</p>
+                                            {% if card.category.currency_code != 'INR' %}
+                                            <p class="text-[9px] text-slate-400 font-sans">({{ row.value_native | currency(card.category.currency_code) }})</p>
+                                            {% endif %}
                                             <p class="text-[10px] {% if row.gain_loss >= 0 %}text-emerald-400{% else %}text-rose-400{% endif %}">
                                                 {% if row.gain_loss >= 0 %}+{% endif %}{{ "%.1f"|format(row.gain_loss_pct) }}%
                                             </p>

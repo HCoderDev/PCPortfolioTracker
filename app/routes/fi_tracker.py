@@ -25,21 +25,24 @@ def index():
             txs = TransactionRepository.get_by_asset(asset['id'])
             total_networth_inr += PortfolioService.current_value_inr(asset, txs, rate)
 
-    target_goal = float(request.args.get('target_goal') or request.form.get('target_goal') or FiService.DEFAULT_TARGET_GOAL)
-    monthly_sip = float(request.args.get('monthly_sip') or request.form.get('monthly_sip') or FiService.DEFAULT_MONTHLY_SIP)
-    return_rate = float(request.args.get('return_rate') or request.form.get('return_rate') or FiService.DEFAULT_RETURN_RATE)
-    inflation_rate = float(request.args.get('inflation_rate') or request.form.get('inflation_rate') or FiService.DEFAULT_INFLATION_RATE)
-    swr = float(request.args.get('swr') or request.form.get('swr') or FiService.DEFAULT_SWR)
+    target_goal = float(request.form.get('target_goal') or request.args.get('target_goal') or (user.get('target_goal') if user else FiService.DEFAULT_TARGET_GOAL))
+    monthly_sip = float(request.form.get('monthly_sip') or request.args.get('monthly_sip') or (user.get('monthly_sip') if user else FiService.DEFAULT_MONTHLY_SIP))
+    return_rate = float(request.form.get('return_rate') or request.args.get('return_rate') or (user.get('return_rate') if user else FiService.DEFAULT_RETURN_RATE))
+    inflation_rate = float(request.form.get('inflation_rate') or request.args.get('inflation_rate') or (user.get('inflation_rate') if user else FiService.DEFAULT_INFLATION_RATE))
+    swr = float(request.form.get('swr') or request.args.get('swr') or (user.get('swr') if user else FiService.DEFAULT_SWR))
+    raw_birth_date_str = request.form.get('birth_date') or request.args.get('birth_date') or (user.get('birth_date') if user else "1996-01-01")
+    birth_date = parse_iso_date(raw_birth_date_str) if raw_birth_date_str else parse_iso_date("1996-01-01")
+    birth_date_iso = birth_date.strftime("%Y-%m-%d")
 
-    birth_date_str = request.args.get('birth_date') or request.form.get('birth_date')
-    if birth_date_str:
-        UserRepository.update_birth_date(birth_date_str)
-    elif user and user.get('birth_date'):
-        birth_date_str = user['birth_date']
-    else:
-        birth_date_str = "1996-01-01"
-
-    birth_date = parse_iso_date(birth_date_str) if birth_date_str else parse_iso_date("1996-01-01")
+    if request.method == 'POST' or any(k in request.args for k in ['target_goal', 'monthly_sip', 'return_rate', 'inflation_rate', 'swr', 'birth_date']):
+        UserRepository.update_fi_details(
+            target_goal=target_goal,
+            monthly_sip=monthly_sip,
+            return_rate=return_rate,
+            inflation_rate=inflation_rate,
+            swr=swr,
+            birth_date=birth_date_iso
+        )
 
     fi_result = FiService.project_fi(
         current_net_worth=total_networth_inr,

@@ -41,6 +41,12 @@
             </div>
 
             <div class="flex items-center space-x-3 shrink-0">
+                {% if category and category.currency_code != 'INR' %}
+                <div class="bg-slate-950 p-1 rounded-xl border border-slate-800 flex space-x-1">
+                    <button type="button" onclick="setContractCurrencyDisplay('INR')" id="btn-contract-curr-inr" class="px-3 py-1 text-xs font-bold rounded-lg bg-indigo-600 text-white shadow-sm transition">INR (₹) Default</button>
+                    <button type="button" onclick="setContractCurrencyDisplay('{{ category.currency_code }}')" id="btn-contract-curr-native" class="px-3 py-1 text-xs font-semibold text-slate-400 hover:text-white transition">{{ category.currency_code }} ($)</button>
+                </div>
+                {% endif %}
                 <button onclick="document.getElementById('updateBalanceModal').classList.remove('hidden')" class="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-xl shadow-lg shadow-emerald-600/30 transition flex items-center space-x-1.5">
                     <i class="fa-solid fa-wallet text-xs"></i>
                     <span>Update Balance</span>
@@ -65,7 +71,7 @@
                     {% if is_sold_off %}Final Settled Valuation{% else %}Current Account Valuation / Balance{% endif %}
                 </p>
                 <div class="flex items-center space-x-3 mt-1">
-                    <h3 class="text-3xl md:text-4xl font-extrabold text-white font-sans">
+                    <h3 id="contract-hero-valuation-display" class="text-3xl md:text-4xl font-extrabold text-white font-sans">
                         {{ val_inr | currency('INR') }}
                     </h3>
                     <button onclick="document.getElementById('updateBalanceModal').classList.remove('hidden')" title="Update Current Balance" class="px-2.5 py-1 text-xs bg-indigo-600/20 text-indigo-300 hover:bg-indigo-600 hover:text-white border border-indigo-500/30 rounded-xl transition font-sans font-semibold flex items-center space-x-1">
@@ -94,11 +100,11 @@
         <div class="grid grid-cols-2 gap-4 text-xs">
             <div>
                 <p class="text-slate-400 font-medium">Capital Invested</p>
-                <p class="text-sm font-bold text-slate-200 font-mono mt-0.5">{{ inv_inr | currency('INR') }}</p>
+                <p id="contract-hero-inv-display" class="text-sm font-bold text-slate-200 font-mono mt-0.5">{{ inv_inr | currency('INR') }}</p>
             </div>
             <div class="text-right">
                 <p class="text-slate-400 font-medium">Total Interest / Returns</p>
-                <p class="text-sm font-bold text-emerald-400 font-mono mt-0.5">+{{ interest_accrued | currency('INR') }}</p>
+                <p id="contract-hero-interest-display" class="text-sm font-bold text-emerald-400 font-mono mt-0.5">+{{ (interest_accrued * exchange_rate) | currency('INR') }}</p>
             </div>
         </div>
     </div>
@@ -845,6 +851,29 @@
         if (window.initAppDatepickers) window.initAppDatepickers();
     }
 
+    async function deleteCurrentTx() {
+        const txId = document.getElementById('edit_tx_id').value;
+        if (!txId) return;
+        if (!confirm('Are you sure you want to delete this transaction entry?')) return;
+
+        try {
+            const res = await fetch('/transactions/delete/' + txId, {
+                method: 'POST',
+                headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' }
+            });
+            await res.json();
+            document.getElementById('editTxModal').classList.add('hidden');
+            if (typeof loadSpaPage === 'function') {
+                loadSpaPage(window.location.href, false);
+            } else {
+                window.location.reload();
+            }
+        } catch (err) {
+            console.error('Delete error:', err);
+        }
+    }
+    window.deleteCurrentTx = deleteCurrentTx;
+
     let inflowsTxData = [
         {% for tx in transactions %}
         {
@@ -1002,6 +1031,30 @@
         if (amountLabel) {
             amountLabel.innerText = opt.text.trim() + ' Amount';
         }
+    }
+
+    function setContractCurrencyDisplay(curr) {
+        const isINR = curr === 'INR';
+        const btnINR = document.getElementById('btn-contract-curr-inr');
+        const btnNative = document.getElementById('btn-contract-curr-native');
+
+        if (btnINR) btnINR.className = isINR ? "px-3 py-1 text-xs font-bold rounded-lg bg-indigo-600 text-white shadow-sm transition" : "px-3 py-1 text-xs font-semibold text-slate-400 hover:text-white transition";
+        if (btnNative) btnNative.className = !isINR ? "px-3 py-1 text-xs font-bold rounded-lg bg-indigo-600 text-white shadow-sm transition" : "px-3 py-1 text-xs font-semibold text-slate-400 hover:text-white transition";
+
+        const symbol = isINR ? '₹' : '{{ category.currency_code if category else "INR" }} ';
+
+        const val = isINR ? {{ val_inr }} : {{ val_local }};
+        const inv = isINR ? {{ inv_inr }} : {{ inv_local }};
+        const interest = isINR ? ({{ interest_accrued }} * {{ exchange_rate }}) : {{ interest_accrued }};
+
+        const valEl = document.getElementById('contract-hero-valuation-display');
+        if (valEl) valEl.innerText = symbol + val.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+        const invEl = document.getElementById('contract-hero-inv-display');
+        if (invEl) invEl.innerText = symbol + inv.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+        const interestEl = document.getElementById('contract-hero-interest-display');
+        if (interestEl) interestEl.innerText = '+' + symbol + interest.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     }
 
     document.addEventListener('DOMContentLoaded', () => {

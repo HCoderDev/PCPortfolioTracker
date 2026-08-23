@@ -28,6 +28,12 @@ def list_assets():
     hide_sold = request.args.get('hide_sold', '0')  # '0' or '1'
     search_q = request.args.get('q', '').strip().lower()
     sort_by = request.args.get('sort', 'name')
+    display_currency = request.args.get('currency', 'INR').upper()
+    if display_currency not in ['INR', 'USD']:
+        display_currency = 'INR'
+
+    usd_curr = next((c for c in currencies if c['code'] == 'USD'), None)
+    usd_inr_rate = float(usd_curr['exchange_rate']) if usd_curr and usd_curr.get('exchange_rate') else 83.0
 
     asset_items = []
     for asset in all_assets:
@@ -63,10 +69,23 @@ def list_assets():
             if filter_recency == 'never' and recency != InvestmentRecencyStatus.NEVER: continue
 
         units = PortfolioService.total_units(txs, holding_type)
+        inv_local = PortfolioService.invested_value(asset, txs)
+        val_local = PortfolioService.current_value(asset, txs)
         inv = PortfolioService.invested_value_inr(asset, txs, rate)
         val = PortfolioService.current_value_inr(asset, txs, rate)
         gain = val - inv
         gain_pct = (gain / inv * 100.0) if inv > 0 else 0.0
+
+        if display_currency == 'USD':
+            invested_display = inv / usd_inr_rate
+            current_value_display = val / usd_inr_rate
+            gain_display = current_value_display - invested_display
+            price_display = (asset.get('current_price', 0.0) * rate) / usd_inr_rate
+        else:
+            invested_display = inv
+            current_value_display = val
+            gain_display = gain
+            price_display = asset.get('current_price', 0.0) * rate if asset.get('category_currency') != 'INR' else asset.get('current_price', 0.0)
 
         asset_items.append({
             'asset': asset,
@@ -79,6 +98,12 @@ def list_assets():
             'invested_inr': inv,
             'current_value_inr': val,
             'gain_inr': gain,
+            'invested_native': inv_local,
+            'current_value_native': val_local,
+            'invested_display': invested_display,
+            'current_value_display': current_value_display,
+            'gain_display': gain_display,
+            'price_display': price_display,
             'gain_pct': gain_pct,
             'is_sold_off': is_sold_off
         })
@@ -114,7 +139,8 @@ def list_assets():
         filter_recency=filter_recency,
         hide_sold=hide_sold,
         search_q=search_q,
-        sort_by=sort_by
+        sort_by=sort_by,
+        display_currency=display_currency
     )
 
 @assets_bp.route('/assets/<int:asset_id>')

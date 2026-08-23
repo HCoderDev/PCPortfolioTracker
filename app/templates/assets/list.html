@@ -24,8 +24,14 @@
             <!-- Search Input -->
             <div class="relative min-w-[200px]">
                 <i class="fa-solid fa-magnifying-glass absolute left-3 top-3 text-slate-500 text-xs"></i>
-                <input type="text" name="q" value="{{ search_q }}" placeholder="Search asset or ticker..."
-                       class="w-full bg-slate-950 border border-slate-800 text-slate-200 text-xs rounded-xl pl-9 pr-3 py-2.5 focus:outline-none focus:border-indigo-500">
+                <input type="text" name="q" id="allAssetSearchInput" value="{{ search_q }}" placeholder="Search asset or ticker..."
+                       oninput="onAssetSearchInput(this)"
+                       class="w-full bg-slate-950 border border-slate-800 text-slate-200 text-xs rounded-xl pl-9 pr-7 py-2.5 focus:outline-none focus:border-indigo-500">
+                {% if search_q %}
+                <button type="button" onclick="clearAssetSearch()" class="absolute right-2.5 top-2.5 text-slate-400 hover:text-white text-xs">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+                {% endif %}
             </div>
 
             <!-- Holding Type Pill Tabs -->
@@ -72,6 +78,17 @@
                 <option value="gain_pct_desc" {% if sort_by == 'gain_pct_desc' %}selected{% endif %}>Sort by Gain/Loss % (High &rarr; Low)</option>
                 <option value="gain_pct_asc" {% if sort_by == 'gain_pct_asc' %}selected{% endif %}>Sort by Gain/Loss % (Low &rarr; High)</option>
             </select>
+
+            <!-- Currency Toggle (INR vs USD) -->
+            <input type="hidden" name="currency" id="asset_display_currency" value="{{ display_currency }}">
+            <div class="bg-slate-950 p-1 rounded-xl border border-slate-800 flex space-x-1">
+                <a href="{{ url_for('assets.list_assets', currency='INR', category_id=filter_cat, type=filter_type, recency=filter_recency, hide_sold=hide_sold, q=search_q, sort=sort_by) }}" class="px-3 py-1 rounded-lg text-xs font-bold transition {% if display_currency == 'INR' %}bg-indigo-600 text-white shadow-sm{% else %}text-slate-400 hover:text-white{% endif %}">
+                    INR (₹)
+                </a>
+                <a href="{{ url_for('assets.list_assets', currency='USD', category_id=filter_cat, type=filter_type, recency=filter_recency, hide_sold=hide_sold, q=search_q, sort=sort_by) }}" class="px-3 py-1 rounded-lg text-xs font-bold transition {% if display_currency == 'USD' %}bg-indigo-600 text-white shadow-sm{% else %}text-slate-400 hover:text-white{% endif %}">
+                    USD ($)
+                </a>
+            </div>
         </form>
 
         <!-- Right Buttons -->
@@ -97,9 +114,9 @@
                         <th class="py-3.5 px-4">Type</th>
                         <th class="py-3.5 px-4">Recency Status</th>
                         <th class="py-3.5 px-4 text-right">Units</th>
-                        <th class="py-3.5 px-4 text-right">Current Price</th>
-                        <th class="py-3.5 px-4 text-right">Invested (INR)</th>
-                        <th class="py-3.5 px-4 text-right">Current Value (INR)</th>
+                        <th class="py-3.5 px-4 text-right">Current Price ({{ display_currency }})</th>
+                        <th class="py-3.5 px-4 text-right">Invested ({{ display_currency }})</th>
+                        <th class="py-3.5 px-4 text-right">Current Value ({{ display_currency }})</th>
                         <th class="py-3.5 px-4 text-right">Gain / Loss</th>
                     </tr>
                 </thead>
@@ -133,17 +150,22 @@
                             {% endif %}
                         </td>
                         <td class="py-3.5 px-4 text-right font-mono text-slate-300">
-                            {% if item.currency_code != 'INR' %}
-                            <span>{{ (item.asset.current_price * item.rate) | currency('INR') }}</span>
+                            {{ item.price_display | currency(display_currency) }}
+                            {% if item.currency_code != display_currency %}
                             <span class="text-[9px] text-slate-400 font-sans block">({{ item.asset.current_price | currency(item.currency_code) }})</span>
-                            {% else %}
-                            {{ item.asset.current_price | currency('INR') }}
                             {% endif %}
                         </td>
-                        <td class="py-3.5 px-4 text-right font-mono text-slate-300">{{ item.invested_inr | currency('INR') }}</td>
-                        <td class="py-3.5 px-4 text-right font-mono font-bold text-white">{{ item.current_value_inr | currency('INR') }}</td>
-                        <td class="py-3.5 px-4 text-right font-mono font-bold {% if item.gain_inr >= 0 %}text-emerald-400{% else %}text-rose-400{% endif %}">
-                            {% if item.gain_inr >= 0 %}+{% endif %}{{ item.gain_inr | currency('INR') }}
+                        <td class="py-3.5 px-4 text-right font-mono text-slate-300">
+                            {{ item.invested_display | currency(display_currency) }}
+                        </td>
+                        <td class="py-3.5 px-4 text-right font-mono font-bold text-white">
+                            {{ item.current_value_display | currency(display_currency) }}
+                            {% if item.currency_code != display_currency %}
+                            <span class="text-[9px] text-slate-400 font-sans block">({{ item.current_value_native | currency(item.currency_code) }})</span>
+                            {% endif %}
+                        </td>
+                        <td class="py-3.5 px-4 text-right font-mono font-bold {% if item.gain_display >= 0 %}text-emerald-400{% else %}text-rose-400{% endif %}">
+                            {% if item.gain_display >= 0 %}+{% endif %}{{ item.gain_display | currency(display_currency) }}
                         </td>
                     </tr>
                     {% else %}
@@ -318,6 +340,27 @@
             }
         }
     }
+
+    let searchTimer = null;
+    function onAssetSearchInput(input) {
+        clearTimeout(searchTimer);
+        searchTimer = setTimeout(() => {
+            if (input.form) {
+                input.form.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
+            }
+        }, 350);
+    }
+    function clearAssetSearch() {
+        const input = document.getElementById('allAssetSearchInput');
+        if (input) {
+            input.value = '';
+            if (input.form) {
+                input.form.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
+            }
+        }
+    }
+    window.onAssetSearchInput = onAssetSearchInput;
+    window.clearAssetSearch = clearAssetSearch;
 
     document.addEventListener('DOMContentLoaded', () => {
         const sel = document.getElementById('add_asset_holding_type');

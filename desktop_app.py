@@ -89,6 +89,82 @@ class DesktopAPI:
             self._window.destroy()
         return True
 
+    def export_db(self):
+        if not self._window:
+            return {'success': False, 'error': 'No active window'}
+        
+        try:
+            from config import Config
+            import shutil
+            db_path = Config.DATABASE_PATH
+            if not db_path or not os.path.exists(db_path):
+                return {'success': False, 'error': 'Database file does not exist.'}
+
+            default_filename = os.path.basename(db_path) or "PortfolioTrackerBackup.db"
+            file_types = ('SQLite Database (*.db)', 'All files (*.*)')
+
+            result = self._window.create_file_dialog(
+                webview.SAVE_DIALOG,
+                save_filename=default_filename,
+                file_types=file_types
+            )
+
+            if result:
+                save_path = result if isinstance(result, str) else (result[0] if len(result) > 0 else '')
+                if save_path:
+                    shutil.copy2(db_path, save_path)
+                    return {'success': True, 'message': f'Database exported successfully to:\n{save_path}'}
+
+            return {'success': False, 'cancelled': True}
+        except Exception as e:
+            return {'success': False, 'error': str(e)}
+
+    def export_csv(self, type_str):
+        if not self._window:
+            return {'success': False, 'error': 'No active window'}
+
+        try:
+            import csv
+            from app.repositories.transaction_repository import TransactionRepository
+            from app.repositories.asset_repository import AssetRepository
+
+            if type_str == 'transactions':
+                txs = TransactionRepository.get_all()
+                default_filename = "Portfolio_Transactions.csv"
+                headers = ['ID', 'Asset', 'Type', 'Raw Type', 'Units', 'Price Per Unit', 'Date', 'Broker', 'Notes']
+                rows = [
+                    [t['id'], t['asset_name'], t['type'], t['raw_type'], t['units'], t['price_per_unit'], t['date'].strftime('%d-%m-%Y') if t['date'] else '', t['broker_name'], t['notes']]
+                    for t in txs
+                ]
+            else:
+                assets = AssetRepository.get_all()
+                default_filename = "Portfolio_Assets.csv"
+                headers = ['ID', 'Name', 'Category', 'Ticker', 'Holding Type', 'Current Price', 'Tax Country', 'Tax Type']
+                rows = [
+                    [a['id'], a['name'], a['category_name'], a['ticker'], a['holding_type'], a['current_price'], a['tax_country'], a['tax_asset_type']]
+                    for a in assets
+                ]
+
+            file_types = ('CSV Files (*.csv)', 'All files (*.*)')
+            result = self._window.create_file_dialog(
+                webview.SAVE_DIALOG,
+                save_filename=default_filename,
+                file_types=file_types
+            )
+
+            if result:
+                save_path = result if isinstance(result, str) else (result[0] if len(result) > 0 else '')
+                if save_path:
+                    with open(save_path, 'w', newline='', encoding='utf-8') as f:
+                        writer = csv.writer(f)
+                        writer.writerow(headers)
+                        writer.writerows(rows)
+                    return {'success': True, 'message': f'Exported CSV successfully to:\n{save_path}'}
+
+            return {'success': False, 'cancelled': True}
+        except Exception as e:
+            return {'success': False, 'error': str(e)}
+
 def acquire_single_instance_lock():
     """Enforces single-instance lock across the system using a dedicated loopback socket."""
     try:
@@ -200,7 +276,7 @@ if __name__ == "__main__":
         resizable=True,
         maximized=True,
         frameless=True,  # REMOVE OS NATIVE TITLE BAR
-        easy_drag=True,
+        easy_drag=False,
         text_select=True,
         confirm_close=False,
         js_api=desktop_api

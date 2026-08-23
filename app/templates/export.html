@@ -55,10 +55,10 @@
                     </p>
                 </div>
                 <div class="pt-2">
-                    <a href="{{ url_for('export.download_db') }}" class="inline-flex items-center justify-center space-x-2 w-full px-4 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs rounded-xl shadow-md transition">
+                    <button type="button" onclick="triggerDbExport()" class="inline-flex items-center justify-center space-x-2 w-full px-4 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs rounded-xl shadow-md transition cursor-pointer">
                         <i class="fa-solid fa-download"></i>
                         <span>Export Database File (.db)</span>
-                    </a>
+                    </button>
                 </div>
             </div>
 
@@ -154,10 +154,10 @@
                     <h4 class="font-bold text-sm text-white">Transactions CSV</h4>
                     <p class="text-slate-400 text-[11px]">Includes all Buy, Sell, Dividend, Interest, and Deposit records with payout amounts, prices, brokers, and notes.</p>
                 </div>
-                <a href="{{ url_for('export.export_csv', type_str='transactions') }}" class="inline-flex items-center justify-center space-x-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs rounded-xl shadow-md transition">
+                <button type="button" onclick="triggerCsvExport('transactions')" class="inline-flex items-center justify-center space-x-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs rounded-xl shadow-md transition cursor-pointer">
                     <i class="fa-solid fa-download text-[10px]"></i>
                     <span>Export Transactions CSV</span>
-                </a>
+                </button>
             </div>
 
             <div class="p-4 bg-slate-950/60 border border-slate-800 rounded-xl space-y-3 flex flex-col justify-between">
@@ -165,42 +165,13 @@
                     <h4 class="font-bold text-sm text-white">Assets CSV</h4>
                     <p class="text-slate-400 text-[11px]">Includes all assets, tickers, categories, current prices, and holding types.</p>
                 </div>
-                <a href="{{ url_for('export.export_csv', type_str='assets') }}" class="inline-flex items-center justify-center space-x-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs rounded-xl shadow-md transition">
+                <button type="button" onclick="triggerCsvExport('assets')" class="inline-flex items-center justify-center space-x-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs rounded-xl shadow-md transition cursor-pointer">
                     <i class="fa-solid fa-download text-[10px]"></i>
                     <span>Export Assets CSV</span>
-                </a>
+                </button>
             </div>
         </div>
     </div>
-
-</div>
-{% endblock %}
-
-{% block scripts %}
-<script>
-    function openImportConfirmModal() {
-        const fileInput = document.getElementById('dbFileInput');
-        if (!fileInput || !fileInput.files || fileInput.files.length === 0) {
-            fileInput.reportValidity();
-            return;
-        }
-        const fileName = fileInput.files[0].name;
-        const fileNameElem = document.getElementById('confirmFileName');
-        if (fileNameElem) {
-            fileNameElem.innerText = fileName;
-        }
-        const modal = document.getElementById('importConfirmModal');
-        if (modal) {
-            modal.classList.remove('hidden');
-        }
-    }
-
-    function closeImportConfirmModal() {
-        const modal = document.getElementById('importConfirmModal');
-        if (modal) {
-            modal.classList.add('hidden');
-        }
-    }
 
     function submitImportForm() {
         const form = document.getElementById('importDbForm');
@@ -208,6 +179,9 @@
             form.submit();
         }
     }
+
+    window.triggerDbExport = triggerDbExport;
+    window.triggerCsvExport = triggerCsvExport;
 </script>
 {% endblock %}
 

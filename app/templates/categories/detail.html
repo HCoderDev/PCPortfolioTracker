@@ -308,17 +308,25 @@
                 <p class="text-xs text-slate-400 mt-0.5">{{ active_count }} active holdings{% if sold_count > 0 %}, {{ sold_count }} sold-off{% endif %}</p>
             </div>
 
-            {% if sold_count > 0 %}
-            <label class="flex items-center space-x-2.5 bg-slate-950 border border-slate-800 rounded-xl px-3 py-1.5 text-xs font-semibold text-slate-300 cursor-pointer hover:border-indigo-500/50 transition self-start sm:self-auto">
-                <input type="checkbox" id="toggleSoldOffCat" onchange="toggleSoldOffAssetsInCat(this.checked)" class="sr-only peer">
-                <div class="w-8 h-4 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-indigo-600 relative"></div>
-                <span>Show Sold-Off Assets</span>
-            </label>
-            {% endif %}
+            <div class="flex flex-wrap items-center gap-3 self-start sm:self-auto">
+                <div class="relative min-w-[180px]">
+                    <i class="fa-solid fa-magnifying-glass absolute left-3 top-2.5 text-slate-500 text-xs"></i>
+                    <input type="text" id="catAssetSearchInput" onkeyup="filterCategoryAssets()" oninput="filterCategoryAssets()" placeholder="Search assets..."
+                           class="w-full bg-slate-950 border border-slate-800 text-slate-200 text-xs rounded-xl pl-9 pr-3 py-1.5 focus:outline-none focus:border-indigo-500">
+                </div>
+
+                {% if sold_count > 0 %}
+                <label class="flex items-center space-x-2.5 bg-slate-950 border border-slate-800 rounded-xl px-3 py-1.5 text-xs font-semibold text-slate-300 cursor-pointer hover:border-indigo-500/50 transition">
+                    <input type="checkbox" id="toggleSoldOffCat" onchange="filterCategoryAssets()" class="sr-only peer">
+                    <div class="w-8 h-4 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-indigo-600 relative"></div>
+                    <span>Show Sold-Off Assets</span>
+                </label>
+                {% endif %}
+            </div>
         </div>
 
         <div class="overflow-x-auto">
-            <table data-paginate="10" class="w-full text-left text-xs border-collapse">
+            <table id="catAssetsTable" data-paginate="10" class="w-full text-left text-xs border-collapse">
                 <thead>
                     <tr class="bg-slate-950/60 border-b border-slate-800 font-bold uppercase tracking-wider text-slate-400">
                         <th class="py-3 px-4">Asset Name</th>
@@ -684,16 +692,34 @@
         if (divEl) divEl.innerText = symbol + div.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     }
 
-    function toggleSoldOffAssetsInCat(show) {
-        document.querySelectorAll('.is-sold-off-row').forEach(el => {
-            if (show) {
-                el.classList.remove('hidden');
+    function filterCategoryAssets() {
+        const query = (document.getElementById('catAssetSearchInput')?.value || '').trim().toLowerCase();
+        const showSold = document.getElementById('toggleSoldOffCat')?.checked || false;
+
+        const rows = document.querySelectorAll('.cat-asset-row');
+        rows.forEach(row => {
+            const text = row.textContent.toLowerCase();
+            const isSoldOff = row.classList.contains('is-sold-off-row');
+            
+            let matchesSearch = !query || text.includes(query);
+            let matchesSold = !isSoldOff || showSold;
+
+            if (matchesSearch && matchesSold) {
+                row.classList.remove('hidden');
+                row.removeAttribute('data-filtered-out');
             } else {
-                el.classList.add('hidden');
+                row.classList.add('hidden');
+                row.setAttribute('data-filtered-out', 'true');
             }
         });
+
+        const table = document.getElementById('catAssetsTable');
+        if (table && typeof paginateTable === 'function') {
+            paginateTable(table.id, 10);
+        }
     }
-    window.toggleSoldOffAssetsInCat = toggleSoldOffAssetsInCat;
+    window.filterCategoryAssets = filterCategoryAssets;
+    window.toggleSoldOffAssetsInCat = filterCategoryAssets;
 
     function toggleUpdateDateDropdown() {
         const dropdown = document.getElementById('updateDateDropdown');

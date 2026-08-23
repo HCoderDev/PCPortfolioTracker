@@ -1083,6 +1083,29 @@
         }
     }
 
+    async function deleteCurrentTx() {
+        const txId = document.getElementById('edit_tx_id').value;
+        if (!txId) return;
+        if (!confirm('Are you sure you want to delete this transaction entry?')) return;
+
+        try {
+            const res = await fetch('/transactions/delete/' + txId, {
+                method: 'POST',
+                headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' }
+            });
+            await res.json();
+            document.getElementById('editTxModal').classList.add('hidden');
+            if (typeof loadSpaPage === 'function') {
+                loadSpaPage(window.location.href, false);
+            } else {
+                window.location.reload();
+            }
+        } catch (err) {
+            console.error('Delete error:', err);
+        }
+    }
+    window.deleteCurrentTx = deleteCurrentTx;
+
     let inflowsTxData = [
         {% for tx in transactions %}
         {

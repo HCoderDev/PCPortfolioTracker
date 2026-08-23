@@ -26,6 +26,9 @@ def format_date(dt, fmt: str = "%d-%m-%Y") -> str:
         return dt.strftime(fmt)
     return str(dt)
 
+def format_iso_date(dt) -> str:
+    return format_date(dt, fmt="%Y-%m-%d")
+
 def parse_iso_date(date_str) -> datetime:
     if not date_str:
         return datetime.now(timezone.utc)

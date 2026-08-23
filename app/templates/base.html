@@ -400,7 +400,7 @@
 <body class="bg-[#090d16] text-slate-100 h-screen w-screen overflow-hidden flex flex-col transition-colors duration-200">
 
     <!-- Custom Frameless Title Bar (App Title Left + Mac Traffic Light Buttons Right) -->
-    <div id="customTitleBar" class="w-full bg-[#0a0e1a]/95 border-b border-slate-800/60 px-4 py-2 flex items-center justify-between select-none z-50 shrink-0 backdrop-blur-md" style="-webkit-app-region: drag; cursor: grab;">
+    <div id="customTitleBar" class="pywebview-drag-region w-full bg-[#0a0e1a]/95 border-b border-slate-800/60 px-4 py-2 flex items-center justify-between select-none z-50 shrink-0 backdrop-blur-md" style="-webkit-app-region: drag; cursor: grab;">
         <!-- Left: App Title (Draggable Region) -->
         <div class="flex items-center space-x-2 text-xs font-bold text-slate-300">
             <img src="{{ url_for('static', filename='app_icon.png') }}" class="w-4 h-4 rounded" alt="App Icon">
@@ -441,7 +441,7 @@
     </div>
 
     <!-- Sidebar Navigation -->
-    <aside id="sidebar" class="w-full md:w-64 bg-[#0d1322]/90 border-r border-slate-800/60 p-5 flex flex-col justify-between hidden md:flex shrink-0 backdrop-blur-lg overflow-y-auto h-full max-h-full scroll-isolated">
+    <aside id="sidebar" class="w-64 bg-[#0d1322]/90 border-r border-slate-800/60 p-5 flex flex-col justify-between shrink-0 backdrop-blur-lg overflow-y-auto h-full max-h-full scroll-isolated">
         <div>
             <!-- App Header / Logo -->
             <div class="flex items-center space-x-3 mb-8 px-2">
@@ -728,7 +728,7 @@
             const link = e.target.closest('a');
             if (!link) return;
             const href = link.getAttribute('href');
-            if (!href || href.startsWith('#') || href.startsWith('javascript:') || link.target === '_blank' || link.getAttribute('data-no-spa') === 'true') {
+            if (!href || href.startsWith('#') || href.startsWith('javascript:') || link.target === '_blank' || link.hasAttribute('download') || link.getAttribute('data-no-spa') === 'true') {
                 return;
             }
             if (link.origin === window.location.origin) {
@@ -746,6 +746,14 @@
             const action = form.action || window.location.href;
             const method = (form.method || 'POST').toUpperCase();
             const formData = new FormData(form);
+
+            if (method === 'GET') {
+                const params = new URLSearchParams(formData).toString();
+                const baseUrl = action.split('?')[0];
+                const targetUrl = baseUrl + (params ? '?' + params : '');
+                loadSpaPage(targetUrl);
+                return;
+            }
 
             try {
                 const res = await fetch(action, {
@@ -797,12 +805,27 @@
             if (!tbody) return;
 
             const allRows = Array.from(tbody.children).filter(r => r.tagName === 'TR');
-            const rows = allRows.filter(r => {
-                const td = r.querySelector('td');
-                return !(td && td.hasAttribute('colspan') && allRows.length === 1);
+            allRows.forEach(r => {
+                if (r.hasAttribute('data-paginated-hidden')) {
+                    r.removeAttribute('data-paginated-hidden');
+                    r.classList.remove('hidden');
+                }
             });
 
-            if (rows.length === 0) return;
+            const rows = allRows.filter(r => {
+                const td = r.querySelector('td');
+                if (td && td.hasAttribute('colspan') && allRows.length === 1) return false;
+                if (r.hasAttribute('data-filtered-out')) return false;
+                if (r.classList.contains('hidden') && !r.hasAttribute('data-paginated-hidden')) return false;
+                return true;
+            });
+
+            if (rows.length === 0) {
+                let navId = tableId + '-pagination';
+                let nav = document.getElementById(navId);
+                if (nav) nav.style.display = 'none';
+                return;
+            }
 
             table._currentPage = 1;
             table._totalPages = Math.max(1, Math.ceil(rows.length / pageSize));
@@ -823,7 +846,10 @@
                 const totalPages = table._totalPages || 1;
 
                 if (totalPages <= 1) {
-                    rows.forEach(r => r.style.display = '');
+                    rows.forEach(r => {
+                        r.classList.remove('hidden');
+                        r.removeAttribute('data-paginated-hidden');
+                    });
                     nav.style.display = 'none';
                     return;
                 }
@@ -833,7 +859,13 @@
                 const end = start + pageSize;
 
                 rows.forEach((row, idx) => {
-                    row.style.display = (idx >= start && idx < end) ? '' : 'none';
+                    if (idx >= start && idx < end) {
+                        row.classList.remove('hidden');
+                        row.removeAttribute('data-paginated-hidden');
+                    } else {
+                        row.classList.add('hidden');
+                        row.setAttribute('data-paginated-hidden', 'true');
+                    }
                 });
 
                 const showingStart = start + 1;
