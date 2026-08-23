@@ -72,6 +72,13 @@ class CategoryRepository:
         db.commit()
 
     @staticmethod
+    def update_last_updated_date(cat_id: int, dt):
+        db = get_db()
+        last_updated_ts = datetime_to_core_data_timestamp(dt) if dt else None
+        db.execute("UPDATE ZCATEGORY SET ZLASTUPDATEDDATE = ? WHERE Z_PK = ?;", (last_updated_ts, cat_id))
+        db.commit()
+
+    @staticmethod
     def delete(cat_id: int):
         db = get_db()
         db.execute("DELETE FROM ZSUBCATEGORY WHERE ZCATEGORY = ?;", (cat_id,))

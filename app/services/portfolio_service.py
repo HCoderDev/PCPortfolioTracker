@@ -322,7 +322,7 @@ class PortfolioService:
         first_tx = min(outflows, key=lambda x: x['date'])
         now_dt = datetime.now(timezone.utc)
         days = (now_dt - first_tx['date']).days
-        date_str = first_tx['date'].strftime('%b %d, %Y')
+        date_str = first_tx['date'].strftime('%d-%m-%Y')
         if days >= 365:
             duration = f"({days // 365} yr, {(days % 365) // 30} mo ago)"
         elif days >= 30:
@@ -337,7 +337,7 @@ class PortfolioService:
         if not outflows:
             return {'date': None, 'text': 'Never Invested'}
         last_tx = max(outflows, key=lambda x: x['date'])
-        date_str = last_tx['date'].strftime('%b %d, %Y')
+        date_str = last_tx['date'].strftime('%d-%m-%Y')
         return {'date': last_tx['date'], 'text': date_str}
 
     @staticmethod

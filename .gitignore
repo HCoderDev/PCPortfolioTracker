@@ -27,3 +27,12 @@ dist/
 Thumbs.db
 Desktop.ini
 .DS_Store
+
+# Databases and Backups
+*.db
+*.sqlite
+*.sqlite3
+*.sqlite-wal
+*.sqlite-shm
+Data/
+db/

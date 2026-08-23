@@ -6,6 +6,16 @@
 {% block content %}
 <div class="space-y-6">
 
+    <!-- BREADCRUMB NAVIGATION -->
+    <nav class="flex items-center space-x-2 text-xs font-semibold text-slate-400" aria-label="Breadcrumb">
+        <a href="{{ url_for('dashboard.index') }}" class="hover:text-indigo-400 transition flex items-center space-x-1.5">
+            <i class="fa-solid fa-house text-[11px]"></i>
+            <span>Overview</span>
+        </a>
+        <span class="text-slate-600 font-bold">&rsaquo;</span>
+        <span class="text-white font-bold">Categories</span>
+    </nav>
+
     <!-- Top Action Toolbar -->
     <div class="apple-card rounded-3xl p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
@@ -44,7 +54,7 @@
                         {% if card.category.last_updated_date %}
                         <div class="flex items-center space-x-1 mt-1 text-[11px] text-indigo-400 font-medium">
                             <i class="fa-solid fa-clock-rotate-left text-[10px]"></i>
-                            <span>Data updated up to: {{ card.category.last_updated_date.strftime('%b %d, %Y %I:%M %p') }}</span>
+                            <span>Data updated up to: {{ card.category.last_updated_date.strftime('%d-%m-%Y %I:%M %p') }}</span>
                         </div>
                         {% endif %}
                     </div>

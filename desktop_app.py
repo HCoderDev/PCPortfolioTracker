@@ -112,14 +112,19 @@ def on_app_startup(window, api):
         try:
             user32 = ctypes.windll.user32
             hwnd = 0
-            # Poll up to 25 times (10 seconds) for PID window creation & visibility
-            for _ in range(25):
-                time.sleep(0.4)
+            # Rapid poll every 20ms (up to 100 loops / 2 seconds) for PID window creation
+            for _ in range(100):
                 hwnd = get_active_app_hwnd()
                 if hwnd and user32.IsWindowVisible(hwnd):
                     break
+                time.sleep(0.02)
 
             if hwnd:
+                # Snap to top-left (0,0) position immediately (SWP_NOSIZE | SWP_NOZORDER)
+                SWP_NOSIZE = 0x0001
+                SWP_NOZORDER = 0x0004
+                user32.SetWindowPos(hwnd, 0, 0, 0, 0, 0, SWP_NOSIZE | SWP_NOZORDER)
+
                 # Set Window Icon
                 icon_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "app_icon.ico")
                 if getattr(sys, 'frozen', False):
@@ -143,8 +148,8 @@ def on_app_startup(window, api):
                     if hicon_small:
                         user32.SendMessageW(hwnd, WM_SETICON, ICON_SMALL, hicon_small)
 
-                # Force Win32 SW_MAXIMIZE
-                user32.ShowWindow(hwnd, 3)  # SW_MAXIMIZE
+                # Force Win32 SW_MAXIMIZE (3)
+                user32.ShowWindow(hwnd, 3)
                 user32.UpdateWindow(hwnd)
                 if api:
                     api._is_max = True
@@ -183,10 +188,12 @@ if __name__ == "__main__":
     
     desktop_api = DesktopAPI()
 
-    # Open frameless native desktop window in maximized mode
+    # Open frameless native desktop window anchored at (0, 0) top-left in maximized mode
     window = webview.create_window(
         title="iPortfolio Tracker — Wealth Cockpit",
         url=url,
+        x=0,
+        y=0,
         width=1360,
         height=880,
         min_size=(1040, 680),

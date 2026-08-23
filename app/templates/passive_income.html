@@ -315,11 +315,14 @@
                     {% for item in period_txs %}
                     <tr onclick="openEditTxModal({id: {{ item.tx.id }}, type: '{{ item.tx.type }}', raw_type: '{{ item.tx.raw_type }}', date: '{{ item.tx.date.strftime('%Y-%m-%d') if item.tx.date else '' }}', units: {{ item.tx.units }}, price_per_unit: {{ item.tx.price_per_unit }}, broker_id: '{{ item.tx.broker_id or '' }}', notes: '{{ item.tx.notes or '' }}'})" class="hover:bg-slate-800/40 cursor-pointer transition">
                         <td class="py-3 px-3 font-sans font-semibold text-white">
-                            <span class="px-2 py-0.5 bg-amber-500/15 text-amber-300 border border-amber-500/30 text-[10px] font-bold rounded-md uppercase">
-                                {{ item.tx.raw_type }}
+                            {% set raw_u = item.tx.raw_type.upper() if item.tx.raw_type else item.tx.type.upper() %}
+                            {% set pass_icon = 'fa-gift' if 'DIVIDEND' in raw_u else ('fa-percent' if 'INTEREST' in raw_u else ('fa-star' if 'BONUS' in raw_u else 'fa-coins')) %}
+                            <span class="inline-flex items-center space-x-1.5 px-2 py-0.5 bg-amber-500/15 text-amber-300 border border-amber-500/30 text-[10px] font-bold rounded-md uppercase">
+                                <i class="fa-solid {{ pass_icon }} text-[9px]"></i>
+                                <span>{{ item.tx.raw_type }}</span>
                             </span>
                         </td>
-                        <td class="py-3 px-3 text-slate-300">{{ item.tx.date.strftime('%Y-%m-%d') if item.tx.date else '' }}</td>
+                        <td class="py-3 px-3 text-slate-300 font-mono">{{ item.tx.date | date_fmt }}</td>
                         <td class="py-3 px-3 font-sans text-white font-medium">{{ item.tx.asset_name }}</td>
                         <td class="py-3 px-3 font-sans text-slate-400">{{ item.tx.category_name }}</td>
                         <td class="py-3 px-3 text-right font-bold text-emerald-400">{{ item.amount_inr | currency('INR') }}</td>
@@ -559,13 +562,22 @@
         if (!tx) return;
         document.getElementById('edit_tx_id').value = tx.id;
         document.getElementById('edit_tx_type').value = tx.raw_type || tx.type || 'DIVIDEND';
-        document.getElementById('edit_tx_date').value = tx.date ? tx.date.split('T')[0] : '';
+        const formattedDate = (typeof formatDateDDMMYYYY === 'function') ? formatDateDDMMYYYY(tx.date || '') : (tx.date ? tx.date.split('T')[0] : '');
+        const dateEl = document.getElementById('edit_tx_date');
+        if (dateEl) {
+            if (dateEl._flatpickr) {
+                dateEl._flatpickr.setDate(formattedDate, true, "d-m-Y");
+            } else {
+                dateEl.value = formattedDate;
+            }
+        }
         document.getElementById('edit_tx_price').value = tx.price_per_unit || 0;
         document.getElementById('edit_tx_broker_id').value = tx.broker_id || '';
         document.getElementById('edit_tx_notes').value = tx.notes || '';
 
         document.getElementById('editTxForm').action = '/transactions/edit/' + tx.id;
         document.getElementById('editTxModal').classList.remove('hidden');
+        if (window.initAppDatepickers) window.initAppDatepickers();
     }
 
     async function deleteCurrentTx() {

@@ -6,6 +6,18 @@
 {% block content %}
 <div class="space-y-6">
 
+    <!-- BREADCRUMB NAVIGATION -->
+    <nav class="flex items-center space-x-2 text-xs font-semibold text-slate-400" aria-label="Breadcrumb">
+        <a href="{{ url_for('dashboard.index') }}" class="hover:text-indigo-400 transition flex items-center space-x-1.5">
+            <i class="fa-solid fa-house text-[11px]"></i>
+            <span>Overview</span>
+        </a>
+        <span class="text-slate-600 font-bold">&rsaquo;</span>
+        <a href="{{ url_for('categories.list_categories') }}" class="hover:text-indigo-400 transition">Categories</a>
+        <span class="text-slate-600 font-bold">&rsaquo;</span>
+        <span class="text-white font-bold truncate max-w-[250px]">{{ category.name }}</span>
+    </nav>
+
     <!-- Category Header Card -->
     <div class="bg-gradient-to-r from-slate-900 via-indigo-950/60 to-slate-900 border border-indigo-500/30 rounded-3xl p-6 shadow-xl flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
         <div>
@@ -38,23 +50,116 @@
 
     <!-- Category Metrics Grid -->
     <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <!-- Total Invested -->
         <div class="apple-card rounded-2xl p-4">
             <p class="text-xs font-semibold text-slate-400">Total Invested</p>
             <p id="cat-metric-inv" class="text-xl font-bold text-white font-mono mt-1">{{ (tot_inv * rate) | currency('INR') }}</p>
         </div>
+
+        <!-- Current Value -->
         <div class="apple-card rounded-2xl p-4">
             <p class="text-xs font-semibold text-slate-400">Current Value</p>
             <p id="cat-metric-val" class="text-xl font-bold text-indigo-400 font-mono mt-1">{{ (tot_val * rate) | currency('INR') }}</p>
         </div>
+
+        <!-- Unrealized G/L -->
         <div class="apple-card rounded-2xl p-4">
-            <p class="text-xs font-semibold text-slate-400">Unrealized P&amp;L</p>
-            <p id="cat-metric-gain" class="text-xl font-bold font-mono mt-1 {% if tot_gain >= 0 %}text-emerald-400{% else %}text-rose-400{% endif %}">
-                {% if tot_gain >= 0 %}+{% endif %}{{ (tot_gain * rate) | currency('INR') }} ({{ "%.2f"|format(tot_gain_pct) }}%)
+            <p class="text-xs font-semibold text-slate-400">Unrealized G/L</p>
+            <p id="cat-metric-unrealized" class="text-xl font-bold font-mono mt-1 {% if tot_unrealized >= 0 %}text-emerald-400{% else %}text-rose-400{% endif %}">
+                {% if tot_unrealized >= 0 %}+{% endif %}{{ (tot_unrealized * rate) | currency('INR') }} ({{ "%.2f"|format(tot_gain_pct) }}%)
             </p>
         </div>
+
+        <!-- Realized P/L -->
         <div class="apple-card rounded-2xl p-4">
-            <p class="text-xs font-semibold text-slate-400">INR Rate</p>
-            <p class="text-xl font-bold text-slate-300 font-mono mt-1">₹{{ "%.2f"|format(rate) }}</p>
+            <p class="text-xs font-semibold text-slate-400">Realized P&amp;L</p>
+            <p id="cat-metric-realized" class="text-xl font-bold font-mono mt-1 {% if tot_realized_pl >= 0 %}text-emerald-400{% else %}text-rose-400{% endif %}">
+                {% if tot_realized_pl >= 0 %}+{% endif %}{{ (tot_realized_pl * rate) | currency('INR') }}
+            </p>
+        </div>
+
+        <!-- Total P/L -->
+        <div class="apple-card rounded-2xl p-4">
+            <p class="text-xs font-semibold text-slate-400">Total P&amp;L (Overall)</p>
+            <p id="cat-metric-total-pl" class="text-xl font-bold font-mono mt-1 {% if tot_total_pl >= 0 %}text-emerald-400{% else %}text-rose-400{% endif %}">
+                {% if tot_total_pl >= 0 %}+{% endif %}{{ (tot_total_pl * rate) | currency('INR') }}
+            </p>
+        </div>
+
+        <!-- Lifetime & Active XIRR -->
+        <div class="apple-card rounded-2xl p-4">
+            <p class="text-xs font-semibold text-slate-400">XIRR (Active / Lifetime)</p>
+            <div class="mt-1 flex items-baseline space-x-2">
+                <span class="text-lg font-bold text-emerald-400 font-mono">
+                    {% if active_xirr is not none %}{{ "%.2f"|format(active_xirr) }}%{% else %}N/A{% endif %}
+                </span>
+                <span class="text-xs text-slate-400 font-mono">
+                    / {% if lifetime_xirr is not none %}{{ "%.2f"|format(lifetime_xirr) }}%{% else %}N/A{% endif %}
+                </span>
+            </div>
+        </div>
+
+        <!-- Life Invested / Life Retrieved -->
+        <div class="apple-card rounded-2xl p-4">
+            <p class="text-xs font-semibold text-slate-400">Life Invested / Retrieved</p>
+            <p class="text-xs font-bold text-slate-200 font-mono mt-1">
+                {{ (tot_lifetime_invested * rate) | currency('INR') }}
+            </p>
+            <p class="text-[11px] text-emerald-400 font-mono mt-0.5">
+                Retrieved: {{ (tot_lifetime_retrieved * rate) | currency('INR') }}
+            </p>
+        </div>
+
+        <!-- Lifetime Dividends -->
+        <div class="apple-card rounded-2xl p-4">
+            <p class="text-xs font-semibold text-slate-400">Lifetime Dividends</p>
+            <p id="cat-metric-dividend" class="text-xl font-bold text-amber-400 font-mono mt-1">
+                {{ (tot_lifetime_dividend * rate) | currency('INR') }}
+            </p>
+        </div>
+    </div>
+
+    <!-- DATA FRESHNESS / LAST UPDATED CARD -->
+    <div class="bg-slate-900/80 border border-slate-800 rounded-2xl p-4 glass-panel flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+        <div class="flex items-center space-x-3">
+            <div class="w-10 h-10 rounded-xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400 font-bold shrink-0">
+                <i class="fa-solid fa-clock-rotate-left text-sm"></i>
+            </div>
+            <div>
+                <p class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Data Updated Up To</p>
+                <p id="cat-updated-date-text" class="text-sm font-bold text-white font-mono mt-0.5">
+                    {% if category.last_updated_date %}
+                    {{ category.last_updated_date.strftime('%d-%m-%Y %I:%M %p') }}
+                    {% else %}
+                    <span class="text-slate-500 font-normal italic">Not set yet</span>
+                    {% endif %}
+                </p>
+            </div>
+        </div>
+
+        <div class="flex items-center space-x-2 self-end sm:self-auto relative">
+            <div class="relative inline-block text-left" id="updateDateDropdownContainer">
+                <button type="button" onclick="toggleUpdateDateDropdown()" class="px-3.5 py-2 bg-indigo-600/20 hover:bg-indigo-600/30 border border-indigo-500/40 text-indigo-300 font-bold text-xs rounded-xl transition flex items-center space-x-1.5">
+                    <i class="fa-solid fa-calendar-days text-xs"></i>
+                    <span>Update Date</span>
+                    <i class="fa-solid fa-chevron-down text-[10px] ml-1"></i>
+                </button>
+
+                <div id="updateDateDropdown" class="hidden absolute right-0 mt-2 w-56 bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl z-50 py-1.5 text-xs">
+                    <button type="button" onclick="markCategoryUpdated('today')" class="w-full text-left px-4 py-2 hover:bg-slate-800 text-slate-200 flex items-center space-x-2">
+                        <i class="fa-solid fa-circle-check text-emerald-400"></i>
+                        <span>Mark Updated Today</span>
+                    </button>
+                    <button type="button" onclick="openCustomDateModal()" class="w-full text-left px-4 py-2 hover:bg-slate-800 text-slate-200 flex items-center space-x-2">
+                        <i class="fa-solid fa-clock text-indigo-400"></i>
+                        <span>Choose Specific Date...</span>
+                    </button>
+                    <button type="button" id="dropdownClearDateBtn" onclick="markCategoryUpdated('clear')" class="w-full text-left px-4 py-2 hover:bg-slate-800 text-rose-400 flex items-center space-x-2 border-t border-slate-800/80 mt-1 {% if not category.last_updated_date %}hidden{% endif %}">
+                        <i class="fa-solid fa-circle-xmark"></i>
+                        <span>Clear Updated Date</span>
+                    </button>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -87,8 +192,8 @@
                 </div>
 
                 <div class="flex flex-col sm:flex-row items-center gap-6 pt-2">
-                    <div class="relative w-full max-w-[180px] aspect-square shrink-0">
-                        <canvas id="catAssetAllocationChart"></canvas>
+                    <div class="relative w-[180px] h-[180px] shrink-0 mx-auto sm:mx-0">
+                        <canvas id="catAssetAllocationChart" width="180" height="180"></canvas>
                     </div>
 
                     <div class="w-full space-y-2 flex-1 max-h-[220px] overflow-y-auto pr-1">
@@ -127,8 +232,8 @@
                 </div>
 
                 <div class="flex flex-col sm:flex-row items-center gap-6 pt-2">
-                    <div class="relative w-full max-w-[180px] aspect-square shrink-0">
-                        <canvas id="catSubCategoryAllocationChart"></canvas>
+                    <div class="relative w-[180px] h-[180px] shrink-0 mx-auto sm:mx-0">
+                        <canvas id="catSubCategoryAllocationChart" width="180" height="180"></canvas>
                     </div>
 
                     <div class="w-full space-y-2 flex-1 max-h-[220px] overflow-y-auto pr-1">
@@ -151,9 +256,67 @@
         {% endif %}
     </div>
 
+    <!-- GROWTH TIMELINE CHART CARD -->
+    {% if growth_timeline and growth_timeline|length > 0 %}
+    <div class="apple-card rounded-3xl p-6 space-y-4">
+        <div class="flex flex-col md:flex-row md:items-center justify-between gap-3 border-b border-slate-800 pb-3">
+            <div class="flex items-center space-x-3">
+                <div class="w-9 h-9 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400">
+                    <i class="fa-solid fa-chart-line text-sm"></i>
+                </div>
+                <div>
+                    <h3 class="font-bold text-base text-white">Growth Timeline</h3>
+                    <p class="text-xs text-slate-400">Cumulative Invested Capital vs Current Market Portfolio Value over time</p>
+                </div>
+            </div>
+
+            <!-- Time Horizon Filters & Legend -->
+            <div class="flex flex-wrap items-center gap-3">
+                <!-- Time Horizon Filter Buttons -->
+                <div class="flex items-center bg-slate-950 p-1 rounded-xl border border-slate-800 text-xs font-semibold">
+                    <button type="button" id="btn-horizon-lifetime" onclick="setGrowthTimelineHorizon('lifetime')" class="px-3 py-1 rounded-lg bg-indigo-600 text-white font-bold transition">Lifetime</button>
+                    <button type="button" id="btn-horizon-5y" onclick="setGrowthTimelineHorizon('5y')" class="px-3 py-1 rounded-lg text-slate-400 hover:text-white transition">5 Years</button>
+                    <button type="button" id="btn-horizon-365d" onclick="setGrowthTimelineHorizon('365d')" class="px-3 py-1 rounded-lg text-slate-400 hover:text-white transition">365 Days</button>
+                    <button type="button" id="btn-horizon-30d" onclick="setGrowthTimelineHorizon('30d')" class="px-3 py-1 rounded-lg text-slate-400 hover:text-white transition">30 Days</button>
+                </div>
+
+                <!-- Legend -->
+                <div class="flex items-center space-x-3 text-xs font-mono pl-2 border-l border-slate-800">
+                    <div class="flex items-center space-x-1.5">
+                        <span class="w-3 h-0.5 bg-indigo-400 border-b border-dashed border-indigo-400 inline-block"></span>
+                        <span class="text-slate-300">Invested</span>
+                    </div>
+                    <div class="flex items-center space-x-1.5">
+                        <span class="w-3 h-0.5 bg-emerald-400 inline-block"></span>
+                        <span class="text-slate-300">Portfolio Value</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="relative w-full h-[260px]">
+            <canvas id="catGrowthTimelineChart"></canvas>
+        </div>
+    </div>
+    {% endif %}
+
     <!-- Category Assets Table -->
     <div class="apple-card rounded-3xl p-6 space-y-4">
-        <h3 class="font-bold text-base text-white">Assets in Category</h3>
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div>
+                <h3 class="font-bold text-base text-white">Assets in Category</h3>
+                <p class="text-xs text-slate-400 mt-0.5">{{ active_count }} active holdings{% if sold_count > 0 %}, {{ sold_count }} sold-off{% endif %}</p>
+            </div>
+
+            {% if sold_count > 0 %}
+            <label class="flex items-center space-x-2.5 bg-slate-950 border border-slate-800 rounded-xl px-3 py-1.5 text-xs font-semibold text-slate-300 cursor-pointer hover:border-indigo-500/50 transition self-start sm:self-auto">
+                <input type="checkbox" id="toggleSoldOffCat" onchange="toggleSoldOffAssetsInCat(this.checked)" class="sr-only peer">
+                <div class="w-8 h-4 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-indigo-600 relative"></div>
+                <span>Show Sold-Off Assets</span>
+            </label>
+            {% endif %}
+        </div>
+
         <div class="overflow-x-auto">
             <table data-paginate="10" class="w-full text-left text-xs border-collapse">
                 <thead>
@@ -167,9 +330,22 @@
                 </thead>
                 <tbody class="divide-y divide-slate-800/60 font-mono">
                     {% for row in assets %}
-                    <tr class="hover:bg-slate-800/40 cursor-pointer transition" onclick="window.location='{{ url_for('assets.asset_detail', asset_id=row.asset.id) }}'">
-                        <td class="py-3 px-4 font-sans font-semibold text-white">{{ row.asset.name }}</td>
-                        <td class="py-3 px-4 text-right text-slate-300">{{ "%.4f"|format(row.units) }}</td>
+                    <tr class="cat-asset-row hover:bg-slate-800/40 cursor-pointer transition {% if row.is_sold_off %}is-sold-off-row hidden{% endif %}" onclick="window.location='{{ url_for('assets.asset_detail', asset_id=row.asset.id) }}'">
+                        <td class="py-3 px-4 font-sans font-semibold text-white">
+                            <div class="flex items-center space-x-2">
+                                <span>{{ row.asset.name }}</span>
+                                {% if row.is_sold_off %}
+                                <span class="px-1.5 py-0.5 bg-slate-800 text-slate-400 text-[9px] font-bold rounded uppercase">Sold Off</span>
+                                {% endif %}
+                            </div>
+                        </td>
+                        <td class="py-3 px-4 text-right text-slate-300">
+                            {% if row.asset.holding_type == 'investment' %}
+                            {{ "%.4f"|format(row.units) }}
+                            {% else %}
+                            -
+                            {% endif %}
+                        </td>
                         <td class="py-3 px-4 text-right text-slate-300">{{ row.invested | currency(category.currency_code) }}</td>
                         <td class="py-3 px-4 text-right text-indigo-300 font-bold">{{ row.current_value | currency(category.currency_code) }}</td>
                         <td class="py-3 px-4 text-right font-bold {% if row.gain_loss >= 0 %}text-emerald-400{% else %}text-rose-400{% endif %}">
@@ -285,6 +461,37 @@
         </form>
     </div>
 </div>
+
+<!-- UPDATE CATEGORY DATE MODAL -->
+<div id="updateCatDateModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
+    <div class="bg-slate-900 border border-slate-800 rounded-3xl w-full max-w-md p-6 shadow-2xl space-y-4">
+        <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+            <h3 class="font-bold text-base text-white flex items-center space-x-2">
+                <i class="fa-solid fa-clock text-indigo-400"></i>
+                <span>Select Data Updated Date</span>
+            </h3>
+            <button onclick="document.getElementById('updateCatDateModal').classList.add('hidden')" class="text-slate-400 hover:text-white">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+        </div>
+        <form id="updateCatDateForm" onsubmit="submitCustomCategoryDate(event)" class="space-y-4 text-xs">
+            <div>
+                <label class="block font-semibold text-slate-300 mb-1">Updated Up To (Date &amp; Time)</label>
+                <input type="datetime-local" id="custom_last_updated_date" name="last_updated_date" required class="w-full bg-slate-950 border border-slate-800 text-white rounded-xl p-2.5 font-mono focus:border-indigo-500">
+            </div>
+
+            <button type="button" onclick="setCustomDateInputToNow()" class="text-xs font-semibold text-indigo-400 hover:text-indigo-300 flex items-center space-x-1.5">
+                <i class="fa-solid fa-clock-rotate-left text-xs"></i>
+                <span>Set to Current Date &amp; Time Today</span>
+            </button>
+
+            <div class="pt-3 border-t border-slate-800 flex justify-end space-x-2">
+                <button type="button" onclick="document.getElementById('updateCatDateModal').classList.add('hidden')" class="px-4 py-2 bg-slate-800 text-slate-300 rounded-xl font-semibold hover:bg-slate-700">Cancel</button>
+                <button type="submit" class="px-4 py-2 bg-indigo-600 text-white rounded-xl font-semibold hover:bg-indigo-500 shadow-md shadow-indigo-600/30">Save Date</button>
+            </div>
+        </form>
+    </div>
+</div>
 {% endblock %}
 
 {% block scripts %}
@@ -336,7 +543,7 @@
             const existing = Chart.getChart(assetCanvas);
             if (existing) existing.destroy();
 
-            const assetData = {{ asset_allocations | tojson }};
+            const assetData = {{ asset_allocations | tojson | safe }};
             document.querySelectorAll('.cat-asset-legend-dot').forEach((dot, idx) => {
                 dot.style.backgroundColor = chartColors[idx % chartColors.length];
             });
@@ -384,7 +591,7 @@
             const existingSub = Chart.getChart(subcatCanvas);
             if (existingSub) existingSub.destroy();
 
-            const subcatData = {{ subcategory_allocations | tojson }};
+            const subcatData = {{ subcategory_allocations | tojson | safe }};
             document.querySelectorAll('.cat-subcat-legend-dot').forEach((dot, idx) => {
                 dot.style.backgroundColor = chartColors[idx % chartColors.length];
             });
@@ -440,7 +647,10 @@
 
         const inv = {{ tot_inv }} * rate;
         const val = {{ tot_val }} * rate;
-        const gain = {{ tot_gain }} * rate;
+        const unrealized = {{ tot_unrealized }} * rate;
+        const realized = {{ tot_realized_pl }} * rate;
+        const totalPl = {{ tot_total_pl }} * rate;
+        const div = {{ tot_lifetime_dividend }} * rate;
         const gainPct = {{ tot_gain_pct }};
 
         const invEl = document.getElementById('cat-metric-inv');
@@ -449,14 +659,289 @@
         const valEl = document.getElementById('cat-metric-val');
         if (valEl) valEl.innerText = symbol + val.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
-        const gainEl = document.getElementById('cat-metric-gain');
-        if (gainEl) {
-            const prefix = gain >= 0 ? '+' : '';
-            gainEl.innerText = `${prefix}${symbol}${gain.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} (${gainPct.toFixed(2)}%)`;
-            gainEl.className = "text-xl font-bold font-mono mt-1 " + (gain >= 0 ? "text-emerald-400" : "text-rose-400");
+        const unrealizedEl = document.getElementById('cat-metric-unrealized');
+        if (unrealizedEl) {
+            const prefix = unrealized >= 0 ? '+' : '';
+            unrealizedEl.innerText = `${prefix}${symbol}${unrealized.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} (${gainPct.toFixed(2)}%)`;
+            unrealizedEl.className = "text-xl font-bold font-mono mt-1 " + (unrealized >= 0 ? "text-emerald-400" : "text-rose-400");
+        }
+
+        const realizedEl = document.getElementById('cat-metric-realized');
+        if (realizedEl) {
+            const prefix = realized >= 0 ? '+' : '';
+            realizedEl.innerText = `${prefix}${symbol}${realized.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+            realizedEl.className = "text-xl font-bold font-mono mt-1 " + (realized >= 0 ? "text-emerald-400" : "text-rose-400");
+        }
+
+        const totalPlEl = document.getElementById('cat-metric-total-pl');
+        if (totalPlEl) {
+            const prefix = totalPl >= 0 ? '+' : '';
+            totalPlEl.innerText = `${prefix}${symbol}${totalPl.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+            totalPlEl.className = "text-xl font-bold font-mono mt-1 " + (totalPl >= 0 ? "text-emerald-400" : "text-rose-400");
+        }
+
+        const divEl = document.getElementById('cat-metric-dividend');
+        if (divEl) divEl.innerText = symbol + div.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+
+    function toggleSoldOffAssetsInCat(show) {
+        document.querySelectorAll('.is-sold-off-row').forEach(el => {
+            if (show) {
+                el.classList.remove('hidden');
+            } else {
+                el.classList.add('hidden');
+            }
+        });
+    }
+    window.toggleSoldOffAssetsInCat = toggleSoldOffAssetsInCat;
+
+    function toggleUpdateDateDropdown() {
+        const dropdown = document.getElementById('updateDateDropdown');
+        if (dropdown) dropdown.classList.toggle('hidden');
+    }
+
+    document.addEventListener('click', (e) => {
+        const container = document.getElementById('updateDateDropdownContainer');
+        const dropdown = document.getElementById('updateDateDropdown');
+        if (container && dropdown && !container.contains(e.target)) {
+            dropdown.classList.add('hidden');
+        }
+    });
+
+    async function markCategoryUpdated(action, customDateStr = '') {
+        const dropdown = document.getElementById('updateDateDropdown');
+        if (dropdown) dropdown.classList.add('hidden');
+
+        const formData = new FormData();
+        formData.append('action', action);
+        if (customDateStr) {
+            formData.append('last_updated_date', customDateStr);
+        }
+
+        try {
+            const res = await fetch('/categories/update-last-updated/' + {{ category.id }}, {
+                method: 'POST',
+                headers: { 'X-Requested-With': 'XMLHttpRequest' },
+                body: formData
+            });
+            const data = await res.json();
+            if (data.status === 'success') {
+                const textEl = document.getElementById('cat-updated-date-text');
+                const clearBtn = document.getElementById('dropdownClearDateBtn');
+                if (data.last_updated_date) {
+                    if (textEl) textEl.innerText = data.last_updated_date;
+                    if (clearBtn) clearBtn.classList.remove('hidden');
+                } else {
+                    if (textEl) textEl.innerHTML = '<span class="text-slate-500 font-normal italic">Not set yet</span>';
+                    if (clearBtn) clearBtn.classList.add('hidden');
+                }
+            }
+        } catch (err) {
+            console.error('Error updating last updated date:', err);
         }
     }
 
+    function openCustomDateModal() {
+        const dropdown = document.getElementById('updateDateDropdown');
+        if (dropdown) dropdown.classList.add('hidden');
+
+        setCustomDateInputToNow();
+        document.getElementById('updateCatDateModal').classList.remove('hidden');
+    }
+
+    function setCustomDateInputToNow() {
+        const now = new Date();
+        now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+        document.getElementById('custom_last_updated_date').value = now.toISOString().slice(0, 16);
+    }
+
+    async function submitCustomCategoryDate(event) {
+        event.preventDefault();
+        const inputVal = document.getElementById('custom_last_updated_date').value;
+        if (!inputVal) return;
+        document.getElementById('updateCatDateModal').classList.add('hidden');
+        await markCategoryUpdated('custom', inputVal);
+    }
+
+    let currentTimelineHorizon = 'lifetime'; // Lifetime is default
+
+    function formatTimestampDDMMYYYY(ts) {
+        const d = new Date(ts);
+        if (isNaN(d.getTime())) return '';
+        const day = String(d.getDate()).padStart(2, '0');
+        const month = String(d.getMonth() + 1).padStart(2, '0');
+        const year = d.getFullYear();
+        return `${day}-${month}-${year}`;
+    }
+
+    function setGrowthTimelineHorizon(horizon) {
+        currentTimelineHorizon = horizon;
+
+        const horizons = ['lifetime', '5y', '365d', '30d'];
+        horizons.forEach(h => {
+            const btn = document.getElementById('btn-horizon-' + h);
+            if (btn) {
+                if (h === horizon) {
+                    btn.className = "px-3 py-1 rounded-lg bg-indigo-600 text-white font-bold transition";
+                } else {
+                    btn.className = "px-3 py-1 rounded-lg text-slate-400 hover:text-white transition";
+                }
+            }
+        });
+
+        initCategoryGrowthTimelineChart();
+    }
+
+    function initCategoryGrowthTimelineChart() {
+        const canvas = document.getElementById('catGrowthTimelineChart');
+        if (!canvas) return;
+        const existing = Chart.getChart(canvas);
+        if (existing) existing.destroy();
+
+        const rawData = {{ growth_timeline | tojson | safe }};
+        if (!rawData || rawData.length === 0) return;
+
+        // Parse timestamps for exact linear timeline spacing
+        const parsedPoints = rawData.map(d => {
+            let ts = 0;
+            if (d.date_iso) {
+                ts = new Date(d.date_iso).getTime();
+            } else if (d.date) {
+                const parts = d.date.split('-');
+                if (parts.length === 3) {
+                    ts = new Date(`${parts[2]}-${parts[1]}-${parts[0]}`).getTime();
+                } else {
+                    ts = new Date(d.date).getTime();
+                }
+            }
+            return {
+                timestamp: ts,
+                dateDisplay: d.date,
+                invested: d.invested,
+                value: d.value
+            };
+        }).filter(p => !isNaN(p.timestamp) && p.timestamp > 0).sort((a, b) => a.timestamp - b.timestamp);
+
+        if (parsedPoints.length === 0) return;
+
+        const nowTs = new Date().getTime();
+        let cutoffTs = 0;
+
+        if (currentTimelineHorizon === '5y') {
+            cutoffTs = nowTs - (5 * 365.25 * 24 * 60 * 60 * 1000);
+        } else if (currentTimelineHorizon === '365d') {
+            cutoffTs = nowTs - (365 * 24 * 60 * 60 * 1000);
+        } else if (currentTimelineHorizon === '30d') {
+            cutoffTs = nowTs - (30 * 24 * 60 * 60 * 1000);
+        }
+
+        let filteredPoints = parsedPoints;
+        if (cutoffTs > 0) {
+            filteredPoints = parsedPoints.filter(p => p.timestamp >= cutoffTs);
+            // If filtering removes earlier points, anchor with the last point before cutoff for continuity
+            if (filteredPoints.length === 0 || filteredPoints[0].timestamp > cutoffTs) {
+                const lastBefore = parsedPoints.filter(p => p.timestamp < cutoffTs).pop();
+                if (lastBefore) {
+                    filteredPoints.unshift({
+                        timestamp: cutoffTs,
+                        dateDisplay: formatTimestampDDMMYYYY(cutoffTs),
+                        invested: lastBefore.invested,
+                        value: lastBefore.value
+                    });
+                }
+            }
+        }
+
+        if (filteredPoints.length === 0) return;
+
+        const investedPoints = filteredPoints.map(p => ({ x: p.timestamp, y: p.invested }));
+        const valuePoints = filteredPoints.map(p => ({ x: p.timestamp, y: p.value }));
+
+        const lastPoint = filteredPoints[filteredPoints.length - 1];
+        const isProfit = (lastPoint.value || 0) >= (lastPoint.invested || 0);
+        const valueColor = isProfit ? '#10b981' : '#f43f5e';
+        const symbol = '{{ "₹" if category.currency_code == "INR" else ("$" if category.currency_code == "USD" else category.currency_code + " ") }}';
+
+        new Chart(canvas.getContext('2d'), {
+            type: 'line',
+            data: {
+                datasets: [
+                    {
+                        label: 'Invested',
+                        data: investedPoints,
+                        borderColor: '#818cf8',
+                        borderWidth: 2,
+                        borderDash: [5, 5],
+                        pointRadius: 0,
+                        pointHoverRadius: 5,
+                        fill: false,
+                        tension: 0.2
+                    },
+                    {
+                        label: 'Portfolio Value',
+                        data: valuePoints,
+                        borderColor: valueColor,
+                        borderWidth: 3,
+                        pointRadius: 0,
+                        pointHoverRadius: 6,
+                        fill: false,
+                        tension: 0.2
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                interaction: { mode: 'index', intersect: false },
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        backgroundColor: '#0f172a',
+                        titleFont: { family: '-apple-system, Inter', size: 12 },
+                        bodyFont: { family: '-apple-system, Inter', size: 12 },
+                        padding: 12,
+                        cornerRadius: 10,
+                        callbacks: {
+                            title: function(ctx) {
+                                if (ctx.length > 0) {
+                                    return formatTimestampDDMMYYYY(ctx[0].parsed.x);
+                                }
+                                return '';
+                            },
+                            label: function(ctx) {
+                                return ` ${ctx.dataset.label}: ${symbol}${ctx.parsed.y.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`;
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    x: {
+                        type: 'linear',
+                        grid: { color: 'rgba(255,255,255,0.05)' },
+                        ticks: {
+                            color: '#94a3b8',
+                            font: { size: 10 },
+                            callback: function(val) {
+                                return formatTimestampDDMMYYYY(val);
+                            }
+                        }
+                    },
+                    y: {
+                        grid: { color: 'rgba(255,255,255,0.05)' },
+                        ticks: {
+                            color: '#94a3b8',
+                            font: { size: 10 },
+                            callback: function(val) {
+                                return symbol + val.toLocaleString('en-IN', { notation: 'compact' });
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    }
+
     initCategoryPieCharts();
+    initCategoryGrowthTimelineChart();
 </script>
 {% endblock %}

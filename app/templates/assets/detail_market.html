@@ -362,8 +362,23 @@
                 <!-- Primary Row -->
                 <div onclick="openEditTxModal({id: {{ tx.id }}, type: '{{ tx.type }}', raw_type: '{{ tx.raw_type }}', date: '{{ tx.date.strftime('%Y-%m-%d') if tx.date else '' }}', units: {{ tx.units }}, price_per_unit: {{ tx.price_per_unit }}, broker_id: '{{ tx.broker_id or '' }}', notes: '{{ tx.notes or '' }}'})" class="flex items-center justify-between gap-4 cursor-pointer group">
                     <div class="flex items-center space-x-3.5 min-w-0">
-                        <div class="w-10 h-10 rounded-full flex items-center justify-center shrink-0 {% if tx.type == 'BUY' %}bg-indigo-500/15 text-indigo-400 border border-indigo-500/30{% elif tx.type == 'SELL' %}bg-rose-500/15 text-rose-400 border border-rose-500/30{% else %}bg-amber-500/15 text-amber-400 border border-amber-500/30{% endif %}">
-                            <i class="fa-solid {% if tx.type == 'BUY' %}fa-arrow-down-left{% elif tx.type == 'SELL' %}fa-arrow-up-right{% else %}fa-coins{% endif %} text-xs"></i>
+                        {% set raw_u = (tx.raw_type or tx.type or '').upper() %}
+                        {% if raw_u in ['BUY', 'PURCHASE'] %}{% set icon_cls = 'fa-cart-shopping' %}{% set circle_cls = 'bg-indigo-500/15 text-indigo-400 border border-indigo-500/30' %}
+                        {% elif raw_u in ['SELL', 'REDEMPTION'] %}{% set icon_cls = 'fa-arrow-up-from-bracket' %}{% set circle_cls = 'bg-rose-500/15 text-rose-400 border border-rose-500/30' %}
+                        {% elif 'DIVIDEND' in raw_u %}{% set icon_cls = 'fa-gift' %}{% set circle_cls = 'bg-amber-500/15 text-amber-400 border border-amber-500/30' %}
+                        {% elif 'INTEREST' in raw_u %}{% set icon_cls = 'fa-percent' %}{% set circle_cls = 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30' %}
+                        {% elif raw_u in ['DEPOSIT', 'CONTRIBUTION'] %}{% set icon_cls = 'fa-arrow-down' %}{% set circle_cls = 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30' %}
+                        {% elif raw_u in ['WITHDRAWAL'] %}{% set icon_cls = 'fa-arrow-up' %}{% set circle_cls = 'bg-rose-500/15 text-rose-400 border border-rose-500/30' %}
+                        {% elif raw_u in ['EMPLOYEE_CONTRIBUTION'] %}{% set icon_cls = 'fa-user-plus' %}{% set circle_cls = 'bg-blue-500/15 text-blue-400 border border-blue-500/30' %}
+                        {% elif raw_u in ['EMPLOYER_CONTRIBUTION'] %}{% set icon_cls = 'fa-building' %}{% set circle_cls = 'bg-purple-500/15 text-purple-400 border border-purple-500/30' %}
+                        {% elif raw_u in ['PREMIUM'] %}{% set icon_cls = 'fa-file-invoice' %}{% set circle_cls = 'bg-sky-500/15 text-sky-400 border border-sky-500/30' %}
+                        {% elif raw_u in ['BONUS'] %}{% set icon_cls = 'fa-star' %}{% set circle_cls = 'bg-amber-500/15 text-amber-400 border border-amber-500/30' %}
+                        {% elif raw_u in ['SURVIVAL_BENEFIT'] %}{% set icon_cls = 'fa-shield-heart' %}{% set circle_cls = 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30' %}
+                        {% elif raw_u in ['MATURITY', 'SURRENDER'] %}{% set icon_cls = 'fa-flag-checkered' %}{% set circle_cls = 'bg-indigo-500/15 text-indigo-400 border border-indigo-500/30' %}
+                        {% else %}{% set icon_cls = 'fa-coins' %}{% set circle_cls = 'bg-indigo-500/15 text-indigo-400 border border-indigo-500/30' %}{% endif %}
+
+                        <div class="w-10 h-10 rounded-full flex items-center justify-center shrink-0 {{ circle_cls }}">
+                            <i class="fa-solid {{ icon_cls }} text-xs"></i>
                         </div>
 
                         <div class="min-w-0">
@@ -386,7 +401,11 @@
                                 <span class="text-[10px] text-indigo-400 font-semibold opacity-0 group-hover:opacity-100 transition">&bull; Click to edit/delete</span>
                             </div>
                             <p class="text-xs text-slate-400 mt-0.5 font-mono">
+                                {% if tx.type in ['DIVIDEND', 'INTEREST'] or tx.raw_type in ['DIVIDEND', 'INTEREST', 'INTEREST_PAYOUT', 'BONUS', 'COUPON', 'SURVIVAL_BENEFIT'] %}
+                                {{ tx.date | date_fmt }} &middot; Income Payout
+                                {% else %}
                                 {{ tx.date | date_fmt }} &middot; {{ "%.4f"|format(tx.units) }} units @ <span class="tx-item-price" data-price-native="{{ tx.price_per_unit }}" data-price-inr="{{ tx.price_per_unit * exchange_rate }}">{{ (tx.price_per_unit * exchange_rate) | currency('INR') }}</span>
+                                {% endif %}
                             </p>
                         </div>
                     </div>
@@ -595,7 +614,7 @@
                 <div class="p-4 rounded-2xl bg-slate-900/60 border border-slate-800/60 space-y-1">
                     <h4 class="font-semibold text-xs text-white">{{ n.title }}</h4>
                     <p class="text-xs text-slate-300 leading-relaxed">{{ n.content }}</p>
-                    <p class="text-[10px] text-slate-500 pt-1 font-mono">{{ n.created_at }}</p>
+                    <p class="text-[10px] text-slate-500 pt-1 font-mono">{{ n.created_at | date_fmt }}</p>
                 </div>
                 {% endfor %}
             </div>
@@ -619,7 +638,7 @@
                 <div class="p-4 rounded-2xl bg-slate-900/60 border border-slate-800/60 flex items-center justify-between">
                     <div>
                         <h4 class="font-semibold text-xs text-white">{{ r.title }}</h4>
-                        <p class="text-[11px] text-slate-400 mt-0.5">Due: {{ r.due_date }}</p>
+                        <p class="text-[11px] text-slate-400 mt-0.5">Due: {{ r.event_date | date_fmt }}</p>
                     </div>
                     <span class="px-2.5 py-1 text-[10px] font-bold rounded-lg {% if r.is_completed %}bg-emerald-950 text-emerald-300{% else %}bg-amber-950 text-amber-300{% endif %}">
                         {% if r.is_completed %}Completed{% else %}Pending{% endif %}
@@ -649,7 +668,7 @@
             <div class="grid grid-cols-2 gap-3">
                 <div>
                     <label class="block font-semibold text-slate-300 mb-1">Transaction Type</label>
-                    <select name="type" required class="w-full bg-slate-950 border border-slate-800 text-white rounded-xl p-2.5">
+                    <select id="add_tx_type" name="type" required onchange="handleTxTypeChange(this, 'add_tx_units_wrap', 'add_tx_price_label')" class="w-full bg-slate-950 border border-slate-800 text-white rounded-xl p-2.5">
                         <option value="BUY">BUY</option>
                         <option value="SELL">SELL</option>
                         <option value="DIVIDEND">DIVIDEND</option>
@@ -662,12 +681,12 @@
             </div>
 
             <div class="grid grid-cols-2 gap-3">
-                <div>
+                <div id="add_tx_units_wrap">
                     <label class="block font-semibold text-slate-300 mb-1">Units / Quantity</label>
-                    <input type="number" step="any" name="units" value="1.0" required class="w-full bg-slate-950 border border-slate-800 text-white rounded-xl p-2.5">
+                    <input type="number" step="any" name="units" value="1.0" class="w-full bg-slate-950 border border-slate-800 text-white rounded-xl p-2.5">
                 </div>
                 <div>
-                    <label class="block font-semibold text-slate-300 mb-1">Price per Unit / Amount</label>
+                    <label id="add_tx_price_label" class="block font-semibold text-slate-300 mb-1">Price per Unit / Amount</label>
                     <input type="number" step="any" name="price_per_unit" required class="w-full bg-slate-950 border border-slate-800 text-white rounded-xl p-2.5">
                 </div>
             </div>
@@ -916,7 +935,7 @@
             <div class="grid grid-cols-2 gap-3">
                 <div>
                     <label class="block font-semibold text-slate-300 mb-1">Type</label>
-                    <select id="edit_tx_type" name="type" required class="w-full bg-slate-950 border border-slate-800 text-white rounded-xl p-2.5">
+                    <select id="edit_tx_type" name="type" required onchange="handleTxTypeChange(this, 'edit_tx_units_wrap', 'edit_tx_price_label')" class="w-full bg-slate-950 border border-slate-800 text-white rounded-xl p-2.5">
                         <option value="BUY">BUY</option>
                         <option value="SELL">SELL</option>
                         <option value="DIVIDEND">DIVIDEND</option>
@@ -929,12 +948,12 @@
             </div>
 
             <div class="grid grid-cols-2 gap-3">
-                <div>
+                <div id="edit_tx_units_wrap">
                     <label class="block font-semibold text-slate-300 mb-1">Units / Quantity</label>
-                    <input type="number" step="any" id="edit_tx_units" name="units" required class="w-full bg-slate-950 border border-slate-800 text-white rounded-xl p-2.5">
+                    <input type="number" step="any" id="edit_tx_units" name="units" class="w-full bg-slate-950 border border-slate-800 text-white rounded-xl p-2.5">
                 </div>
                 <div>
-                    <label class="block font-semibold text-slate-300 mb-1">Price per Unit / Amount</label>
+                    <label id="edit_tx_price_label" class="block font-semibold text-slate-300 mb-1">Price per Unit / Amount</label>
                     <input type="number" step="any" id="edit_tx_price" name="price_per_unit" required class="w-full bg-slate-950 border border-slate-800 text-white rounded-xl p-2.5">
                 </div>
             </div>
@@ -995,18 +1014,66 @@
     }
     window.switchTab = switchTab;
 
+    function handleTxTypeChange(selectEl, unitsWrapId, priceLabelId) {
+        if (!selectEl) return;
+        const val = (selectEl.value || '').toUpperCase();
+        const isIncome = ['DIVIDEND', 'INTEREST', 'INTEREST_PAYOUT', 'BONUS', 'COUPON', 'SURVIVAL_BENEFIT'].includes(val);
+        const unitsWrap = document.getElementById(unitsWrapId);
+        const priceLabel = document.getElementById(priceLabelId);
+
+        if (unitsWrap) {
+            if (isIncome) {
+                unitsWrap.classList.add('hidden');
+                const input = unitsWrap.querySelector('input');
+                if (input) input.value = '1.0';
+            } else {
+                unitsWrap.classList.remove('hidden');
+            }
+        }
+
+        if (priceLabel) {
+            priceLabel.textContent = isIncome ? 'Payout Amount' : 'Price per Unit / Amount';
+        }
+    }
+    function formatDateDDMMYYYY(dateStr) {
+        if (!dateStr) return '';
+        const clean = String(dateStr).split('T')[0];
+        const parts = clean.split(/[-/]/);
+        if (parts.length === 3) {
+            if (parts[0].length === 4) {
+                return `${parts[2].padStart(2, '0')}-${parts[1].padStart(2, '0')}-${parts[0]}`;
+            } else if (parts[2].length === 4) {
+                return `${parts[0].padStart(2, '0')}-${parts[1].padStart(2, '0')}-${parts[2]}`;
+            }
+        }
+        return clean;
+    }
+    window.formatDateDDMMYYYY = formatDateDDMMYYYY;
+    window.handleTxTypeChange = handleTxTypeChange;
+
     function openEditTxModal(tx) {
         if (!tx) return;
         document.getElementById('edit_tx_id').value = tx.id;
         document.getElementById('edit_tx_type').value = tx.raw_type || tx.type || 'BUY';
-        document.getElementById('edit_tx_date').value = tx.date ? tx.date.split('T')[0] : '';
+        const formattedDate = formatDateDDMMYYYY(tx.date || '');
+        const dateEl = document.getElementById('edit_tx_date');
+        if (dateEl) {
+            if (dateEl._flatpickr) {
+                dateEl._flatpickr.setDate(formattedDate, true, "d-m-Y");
+            } else {
+                dateEl.value = formattedDate;
+            }
+        }
         document.getElementById('edit_tx_units').value = tx.units || 0;
         document.getElementById('edit_tx_price').value = tx.price_per_unit || 0;
         document.getElementById('edit_tx_broker_id').value = tx.broker_id || '';
         document.getElementById('edit_tx_notes').value = tx.notes || '';
         
+        handleTxTypeChange(document.getElementById('edit_tx_type'), 'edit_tx_units_wrap', 'edit_tx_price_label');
+        
         document.getElementById('editTxForm').action = '/transactions/edit/' + tx.id;
         document.getElementById('editTxModal').classList.remove('hidden');
+        if (window.initAppDatepickers) window.initAppDatepickers();
     }
 
     function toggleFifoDetails(drawerId) {
@@ -1144,7 +1211,7 @@
                                 <span>${tx.raw_type}</span>
                             </span>
                         </td>
-                        <td class="py-3 px-2 font-mono text-slate-300">${tx.date}</td>
+                        <td class="py-3 px-2 font-mono text-slate-300">${formatDateDDMMYYYY(tx.date)}</td>
                         <td class="py-3 px-2 font-mono text-slate-300">${tx.units.toFixed(4)}</td>
                         <td class="py-3 px-2 font-mono text-slate-300">${symbol}${tx.price.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                         <td class="py-3 px-2 font-mono font-bold text-right ${tx.type === 'BUY' ? 'text-indigo-400' : 'text-emerald-400'}">

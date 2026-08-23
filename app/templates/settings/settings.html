@@ -17,7 +17,7 @@
 
             <div>
                 <label class="block font-semibold text-slate-300 mb-1">Date of Birth</label>
-                <input type="date" name="birth_date" value="{{ user.birth_date if user and user.birth_date else '1996-01-01' }}" class="w-full bg-slate-950 border border-slate-800 text-white rounded-xl p-2.5 font-mono">
+                <input type="date" name="birth_date" value="{{ (user.birth_date | date_fmt) if user and user.birth_date else '01-01-1996' }}" class="w-full bg-slate-950 border border-slate-800 text-white rounded-xl p-2.5 font-mono">
                 <p class="text-[11px] text-slate-500 mt-1">Used for Time to FI projections and retirement timeline analysis.</p>
             </div>
 

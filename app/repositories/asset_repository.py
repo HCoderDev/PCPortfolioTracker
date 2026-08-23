@@ -140,18 +140,51 @@ class AssetRepository:
         raw_aliases = d.get('ZALIASESRAW') or ''
         aliases = [a.strip() for a in raw_aliases.split('|||') if a.strip()] if raw_aliases else []
 
+        raw_holding = d.get('ZHOLDINGTYPERAW')
+        raw_tax = d.get('ZTAXASSETTYPERAW')
+        
+        category_name = d.get('category_name', '') or ''
+        subcategory_name = d.get('subcategory_name', '') or ''
+        combined_cat = f"{category_name} {subcategory_name}".lower()
+
+        if raw_holding and str(raw_holding).strip():
+            holding_type = str(raw_holding).strip()
+        else:
+            if any(k in combined_cat for k in ['bank', 'savings', 'checking', 'current', 'wallet', 'cash']):
+                holding_type = 'bankAccount'
+            elif any(k in combined_cat for k in ['fixed deposit', 'fd', 'rd', 'term deposit', 'recurring deposit']):
+                holding_type = 'fixedDeposit'
+            elif any(k in combined_cat for k in ['post office', 'ppf', 'nsc', 'kvp', 'mis', 'sukanya', 'ssy']):
+                holding_type = 'postOffice'
+            elif any(k in combined_cat for k in ['insurance', 'annuity', 'lic', 'policy', 'ulip', 'endowment', 'term insurance']):
+                holding_type = 'insuranceAnnuity'
+            elif any(k in combined_cat for k in ['epf', 'pf', 'provident', 'pension', 'nps']):
+                holding_type = 'epf'
+            else:
+                holding_type = 'investment'
+
+        if raw_tax and str(raw_tax).strip():
+            tax_asset_type = str(raw_tax).strip()
+        else:
+            if holding_type == 'bankAccount':
+                tax_asset_type = 'cash'
+            elif holding_type in ['fixedDeposit', 'postOffice', 'insuranceAnnuity', 'epf']:
+                tax_asset_type = 'debt'
+            else:
+                tax_asset_type = 'equity'
+
         return {
             'id': d['Z_PK'],
             'name': d.get('ZNAME', ''),
             'current_price': d.get('ZCURRENTPRICE', 0.0) or 0.0,
             'category_id': d.get('ZCATEGORY'),
-            'category_name': d.get('category_name', ''),
+            'category_name': category_name,
             'category_currency': d.get('category_currency', 'INR'),
             'subcategory_id': d.get('ZSUBCATEGORY'),
-            'subcategory_name': d.get('subcategory_name', ''),
+            'subcategory_name': subcategory_name,
             'tax_country': d.get('ZTAXCOUNTRYRAW') or ('India' if d.get('category_currency') == 'INR' else 'United States'),
-            'tax_asset_type': d.get('ZTAXASSETTYPERAW') or 'equity',
-            'holding_type': d.get('ZHOLDINGTYPERAW') or 'investment',
+            'tax_asset_type': tax_asset_type,
+            'holding_type': holding_type,
             'ticker': d.get('ZTICKERRAW') or '',
             'aliases_raw': raw_aliases,
             'aliases': aliases,

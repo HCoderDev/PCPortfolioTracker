@@ -13,6 +13,10 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <!-- Google Fonts Inter -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+    <!-- Flatpickr Datepicker CDN -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/themes/dark.css" id="flatpickrTheme">
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
 
     <script>
         // Early Theme Initialization from LocalStorage
@@ -78,37 +82,89 @@
             border-color: rgba(255, 255, 255, 0.07);
         }
 
-        /* --- COMPREHENSIVE APPLE HIG LIGHT MODE COLOR OVERRIDES --- */
+        /* ==========================================================================
+           COMPREHENSIVE ACCESSIBLE LIGHT MODE DESIGN SYSTEM (WCAG AA COMPLIANT)
+           ========================================================================== */
+
+        /* 1. Global Page & Body Surface */
         html.light body {
             background-color: #f5f5f7 !important;
             color: #1d1d1f !important;
         }
 
-        html.light aside#sidebar {
+        /* 2. Custom Window Title Bar */
+        html.light #customTitleBar {
             background-color: #ffffff !important;
             border-color: #e5e5ea !important;
-            box-shadow: 1px 0 8px rgba(0, 0, 0, 0.03);
+            color: #1d1d1f !important;
         }
-        html.light aside#sidebar h1 { color: #1d1d1f !important; }
-        html.light aside#sidebar p { color: #8e8e93 !important; }
-        html.light aside#sidebar a:not(.bg-indigo-600) { color: #3a3a3c !important; }
-        html.light aside#sidebar a:not(.bg-indigo-600):hover {
-            background-color: rgba(0, 0, 0, 0.04) !important;
-            color: #007aff !important;
-        }
-        html.light aside#sidebar div.border-t { border-color: #e5e5ea !important; }
-
-        html.light header {
-            background-color: rgba(255, 255, 255, 0.95) !important;
-            border-color: #e5e5ea !important;
-        }
-        html.light header h2 { color: #1d1d1f !important; }
-        html.light #themeToggle {
-            background-color: #e5e5ea !important;
-            border-color: #d1d1d6 !important;
+        html.light #customTitleBar span {
             color: #1d1d1f !important;
         }
 
+        /* 3. Navigation Sidebar */
+        html.light aside#sidebar {
+            background-color: #ffffff !important;
+            border-color: #e5e5ea !important;
+            box-shadow: 1px 0 10px rgba(0, 0, 0, 0.03) !important;
+        }
+        html.light aside#sidebar h1 {
+            color: #1d1d1f !important;
+            font-weight: 700 !important;
+        }
+        html.light aside#sidebar p.text-slate-400,
+        html.light aside#sidebar p.text-slate-500 {
+            color: #505054 !important;
+        }
+        html.light aside#sidebar nav p {
+            color: #3a3a3c !important;
+            font-weight: 700 !important;
+        }
+        html.light aside#sidebar a:not(.bg-indigo-600) {
+            color: #2c2c2e !important;
+            font-weight: 500 !important;
+        }
+        html.light aside#sidebar a:not(.bg-indigo-600) i {
+            color: #48484a !important;
+        }
+        html.light aside#sidebar a:not(.bg-indigo-600):hover {
+            background-color: #f2f2f7 !important;
+            color: #000000 !important;
+        }
+        html.light aside#sidebar a:not(.bg-indigo-600):hover i {
+            color: #4f46e5 !important;
+        }
+        html.light aside#sidebar a.bg-indigo-600 {
+            background-color: #4f46e5 !important;
+            color: #ffffff !important;
+            font-weight: 600 !important;
+        }
+        html.light aside#sidebar a.bg-indigo-600 i {
+            color: #ffffff !important;
+        }
+        html.light aside#sidebar div.border-t {
+            border-color: #e5e5ea !important;
+        }
+
+        /* 4. Top App Header Bar */
+        html.light header {
+            background-color: rgba(255, 255, 255, 0.96) !important;
+            border-color: #e5e5ea !important;
+        }
+        html.light header h2 {
+            color: #1d1d1f !important;
+            font-weight: 700 !important;
+        }
+        html.light #themeToggle {
+            background-color: #f2f2f7 !important;
+            border-color: #d1d1d6 !important;
+            color: #1d1d1f !important;
+        }
+        html.light #themeToggle:hover {
+            background-color: #e5e5ea !important;
+        }
+
+        /* 5. Main Surface Cards & Glass Panels */
         html.light .apple-card,
         html.light .glass-panel {
             background-color: #ffffff !important;
@@ -116,143 +172,232 @@
             box-shadow: 0 4px 16px rgba(0, 0, 0, 0.04) !important;
         }
 
+        /* 6. Sub-Cards, Sub-Containers & Inset Panels */
         html.light .bg-slate-900,
         html.light .bg-slate-950,
         html.light .bg-slate-900\/90,
         html.light .bg-slate-900\/80,
+        html.light .bg-slate-900\/70,
         html.light .bg-slate-900\/60,
+        html.light .bg-slate-900\/50,
         html.light .bg-slate-900\/40,
-        html.light .bg-slate-950\/60,
+        html.light .bg-slate-950\/90,
         html.light .bg-slate-950\/80,
-        html.light .bg-slate-950\/90 {
-            background-color: #ffffff !important;
+        html.light .bg-slate-950\/70,
+        html.light .bg-slate-950\/60,
+        html.light .bg-slate-950\/50,
+        html.light .bg-slate-950\/40 {
+            background-color: #f5f5f7 !important;
             border-color: #e5e5ea !important;
         }
 
-        /* --- LIGHT MODE BADGE & ALERT OVERRIDES --- */
-        html.light .bg-amber-950,
-        html.light .bg-amber-950\/80,
-        html.light .bg-amber-950\/50,
-        html.light .bg-amber-900 {
-            background-color: #fffbe6 !important;
-            border-color: #ffe58f !important;
-            color: #d46b08 !important;
-        }
-        html.light .bg-amber-950 span,
-        html.light .bg-amber-950\/50 span,
-        html.light .text-amber-200,
-        html.light .text-amber-300,
-        html.light .text-amber-400 {
-            color: #b75900 !important;
-        }
-
-        html.light .bg-rose-950,
-        html.light .bg-rose-950\/80,
-        html.light .bg-rose-950\/50,
-        html.light .bg-rose-900 {
-            background-color: #fff1f0 !important;
-            border-color: #ffccc7 !important;
-            color: #cf1322 !important;
-        }
-        html.light .bg-rose-950 span,
-        html.light .text-rose-300,
-        html.light .text-rose-400 {
-            color: #cf1322 !important;
-        }
-
-        html.light .bg-emerald-950,
-        html.light .bg-emerald-950\/80,
-        html.light .bg-emerald-950\/50,
-        html.light .bg-emerald-900 {
-            background-color: #f6ffed !important;
-            border-color: #b7eb8f !important;
-            color: #389e0d !important;
-        }
-        html.light .bg-emerald-950 span,
-        html.light .text-emerald-300,
-        html.light .text-emerald-400 {
-            color: #237804 !important;
-        }
-
-        html.light .bg-indigo-950,
-        html.light .bg-indigo-950\/80,
-        html.light .bg-indigo-950\/50,
-        html.light .bg-indigo-900 {
-            background-color: #f0f5ff !important;
-            border-color: #adc6ff !important;
-            color: #1d39c4 !important;
-        }
-        html.light .bg-indigo-950 span,
-        html.light .text-indigo-300,
-        html.light .text-indigo-400 {
-            color: #1d39c4 !important;
-        }
-
+        /* 7. Typography Hierarchy */
         html.light .text-white,
         html.light .text-slate-100,
         html.light .text-slate-200 {
             color: #1d1d1f !important;
         }
-
         html.light .text-slate-300,
         html.light .text-slate-400 {
-            color: #48484a !important;
+            color: #3a3a3c !important;
+        }
+        html.light .text-slate-500,
+        html.light .text-slate-600 {
+            color: #505054 !important;
         }
 
-        html.light .text-slate-500 {
-            color: #8e8e93 !important;
+        /* 8. Semantic Financial Colors */
+        html.light .text-emerald-400,
+        html.light .text-emerald-300,
+        html.light .text-emerald-500,
+        html.light .text-emerald-600,
+        html.light .text-green-400,
+        html.light .text-green-500 {
+            color: #15803d !important;
+        }
+        html.light .text-rose-400,
+        html.light .text-rose-300,
+        html.light .text-rose-500,
+        html.light .text-rose-600,
+        html.light .text-red-400,
+        html.light .text-red-500 {
+            color: #b91c1c !important;
+        }
+        html.light .text-indigo-400,
+        html.light .text-indigo-300,
+        html.light .text-indigo-500,
+        html.light .text-blue-400,
+        html.light .text-blue-500 {
+            color: #3730a3 !important;
+        }
+        html.light .text-amber-200,
+        html.light .text-amber-300,
+        html.light .text-amber-400,
+        html.light .text-amber-500,
+        html.light .text-orange-400,
+        html.light .text-orange-300 {
+            color: #b45309 !important;
         }
 
+        /* 9. Badges & Alert Callout Boxes */
+        html.light .bg-amber-950,
+        html.light .bg-amber-950\/80,
+        html.light .bg-amber-950\/50,
+        html.light .bg-amber-950\/40,
+        html.light .bg-amber-900 {
+            background-color: #fffbeb !important;
+            border-color: #fde68a !important;
+            color: #b45309 !important;
+        }
+        html.light .bg-amber-950 span,
+        html.light .bg-amber-950\/50 span {
+            color: #92400e !important;
+        }
+
+        html.light .bg-rose-950,
+        html.light .bg-rose-950\/80,
+        html.light .bg-rose-950\/50,
+        html.light .bg-rose-950\/40,
+        html.light .bg-rose-900 {
+            background-color: #fff1f2 !important;
+            border-color: #fecdd3 !important;
+            color: #b91c1c !important;
+        }
+        html.light .bg-rose-950 span,
+        html.light .bg-rose-950\/50 span {
+            color: #9f1239 !important;
+        }
+
+        html.light .bg-emerald-950,
+        html.light .bg-emerald-950\/80,
+        html.light .bg-emerald-950\/50,
+        html.light .bg-emerald-950\/40,
+        html.light .bg-emerald-900 {
+            background-color: #f0fdf4 !important;
+            border-color: #bbf7d0 !important;
+            color: #15803d !important;
+        }
+        html.light .bg-emerald-950 span,
+        html.light .bg-emerald-950\/50 span {
+            color: #166534 !important;
+        }
+
+        html.light .bg-indigo-950,
+        html.light .bg-indigo-950\/80,
+        html.light .bg-indigo-950\/50,
+        html.light .bg-indigo-950\/40,
+        html.light .bg-indigo-900 {
+            background-color: #eef2ff !important;
+            border-color: #c7d2fe !important;
+            color: #3730a3 !important;
+        }
+        html.light .bg-indigo-950 span,
+        html.light .bg-indigo-950\/50 span {
+            color: #312e81 !important;
+        }
+
+        /* 10. Borders & Dividers */
         html.light .border-slate-800,
-        html.light .border-slate-800\/60,
         html.light .border-slate-800\/80,
+        html.light .border-slate-800\/60,
         html.light .border-slate-800\/40,
         html.light .border-slate-700,
+        html.light .border-slate-700\/80,
         html.light .border-slate-700\/60,
-        html.light .divide-slate-800\/60 > :not([hidden]) ~ :not([hidden]) {
+        html.light .divide-slate-800\/80 > :not([hidden]) ~ :not([hidden]),
+        html.light .divide-slate-800\/60 > :not([hidden]) ~ :not([hidden]),
+        html.light .divide-slate-800\/40 > :not([hidden]) ~ :not([hidden]) {
             border-color: #e5e5ea !important;
         }
 
-        html.light select,
-        html.light input,
-        html.light textarea {
+        /* 11. Tables (Header, Cells, Hover & Action Buttons) */
+        html.light table th {
             background-color: #f2f2f7 !important;
+            color: #2c2c2e !important;
+            border-color: #d1d1d6 !important;
+            font-weight: 700 !important;
+        }
+        html.light table td {
+            border-color: #e5e5ea !important;
+            color: #1d1d1f !important;
+        }
+        html.light table tr:hover,
+        html.light .category-row:hover {
+            background-color: #f2f2f7 !important;
+        }
+        html.light table span.bg-slate-800,
+        html.light table span.bg-slate-900,
+        html.light .bg-slate-800,
+        html.light .bg-slate-800\/80,
+        html.light .bg-slate-800\/60,
+        html.light .bg-slate-800\/50 {
+            background-color: #e5e5ea !important;
             border-color: #d1d1d6 !important;
             color: #1d1d1f !important;
         }
 
-        html.light table th {
-            background-color: #f2f2f7 !important;
-            color: #636366 !important;
-            border-color: #e5e5ea !important;
-        }
-
-        html.light table td {
-            border-color: #f2f2f7 !important;
+        /* 12. Inputs, Selects & Textareas */
+        html.light select,
+        html.light input,
+        html.light textarea {
+            background-color: #ffffff !important;
+            border-color: #c7c7cc !important;
             color: #1d1d1f !important;
         }
-
-        html.light table tr:hover {
-            background-color: #f2f2f7 !important;
+        html.light select:focus,
+        html.light input:focus,
+        html.light textarea:focus {
+            border-color: #4f46e5 !important;
+            outline: none !important;
+            box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.2) !important;
         }
 
+        /* 13. Buttons in Light Mode */
+        html.light button.bg-slate-800,
+        html.light button.bg-slate-800\/50,
+        html.light button.bg-slate-800\/60 {
+            background-color: #e5e5ea !important;
+            border-color: #d1d1d6 !important;
+            color: #1d1d1f !important;
+        }
+        html.light button.bg-slate-800:hover,
+        html.light button.bg-slate-800\/50:hover,
+        html.light button.bg-slate-800\/60:hover {
+            background-color: #d1d1d6 !important;
+            color: #000000 !important;
+        }
+
+        /* 14. Progress Bars */
+        html.light .bg-slate-800\/80,
+        html.light .bg-slate-800,
+        html.light .bg-slate-950 {
+            background-color: #e5e5ea !important;
+        }
+
+        /* 15. Modals & Overlays */
         html.light .fixed.inset-0 {
-            background-color: rgba(0, 0, 0, 0.3) !important;
+            background-color: rgba(0, 0, 0, 0.4) !important;
         }
-
         html.light .fixed.inset-0 > div {
             background-color: #ffffff !important;
             border-color: #e5e5ea !important;
             color: #1d1d1f !important;
-            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.12) !important;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15) !important;
         }
 
+        /* 16. Sticky Elements */
         html.light .sticky {
-            background-color: #f5f5f7 !important;
+            background-color: rgba(245, 245, 247, 0.95) !important;
+        }
+
+        /* 17. Scroll Isolation (Prevent scroll chaining between sidebar and main content) */
+        .scroll-isolated {
+            overscroll-behavior: contain;
+            -webkit-overflow-scrolling: touch;
         }
     </style>
 </head>
-<body class="bg-[#090d16] text-slate-100 min-h-screen flex flex-col transition-colors duration-200">
+<body class="bg-[#090d16] text-slate-100 h-screen w-screen overflow-hidden flex flex-col transition-colors duration-200">
 
     <!-- Custom Frameless Title Bar (App Title Left + Mac Traffic Light Buttons Right) -->
     <div id="customTitleBar" class="w-full bg-[#0a0e1a]/95 border-b border-slate-800/60 px-4 py-2 flex items-center justify-between select-none z-50 shrink-0 backdrop-blur-md" style="-webkit-app-region: drag; cursor: grab;">
@@ -280,10 +425,10 @@
     </div>
 
     <!-- Main App Container -->
-    <div class="flex-1 flex flex-col md:flex-row w-full min-h-0 overflow-auto">
+    <div class="flex-1 flex flex-col md:flex-row w-full min-h-0 min-w-0 overflow-hidden">
 
     <!-- Mobile Header -->
-    <div class="md:hidden flex items-center justify-between p-4 bg-slate-900/90 border-b border-slate-800/80 backdrop-blur-md">
+    <div class="md:hidden flex items-center justify-between p-4 bg-slate-900/90 border-b border-slate-800/80 backdrop-blur-md shrink-0">
         <div class="flex items-center space-x-3">
             <div class="w-8 h-8 rounded-lg bg-indigo-600 flex items-center justify-center font-bold text-white shadow-sm">
                 <i class="fa-solid fa-chart-pie text-sm"></i>
@@ -296,7 +441,7 @@
     </div>
 
     <!-- Sidebar Navigation -->
-    <aside id="sidebar" class="w-full md:w-64 bg-[#0d1322]/90 border-r border-slate-800/60 p-5 flex flex-col justify-between hidden md:flex shrink-0 backdrop-blur-lg">
+    <aside id="sidebar" class="w-full md:w-64 bg-[#0d1322]/90 border-r border-slate-800/60 p-5 flex flex-col justify-between hidden md:flex shrink-0 backdrop-blur-lg overflow-y-auto h-full max-h-full scroll-isolated">
         <div>
             <!-- App Header / Logo -->
             <div class="flex items-center space-x-3 mb-8 px-2">
@@ -417,7 +562,7 @@
     </aside>
 
     <!-- Main Content Area -->
-    <main class="flex-1 flex flex-col min-w-0 overflow-y-auto">
+    <main class="flex-1 flex flex-col min-w-0 min-h-0 overflow-y-auto h-full max-h-full scroll-isolated">
         <!-- Top App Bar -->
         <header class="h-14 bg-[#0d1322]/80 border-b border-slate-800/60 px-6 flex items-center justify-between shrink-0 backdrop-blur-md sticky top-0 z-20">
             <div class="flex items-center space-x-4">
@@ -570,6 +715,7 @@
                 });
 
                 updateThemeIcon();
+                initAppDatepickers();
                 window.scrollTo({ top: 0, behavior: 'smooth' });
             } catch (err) {
                 console.error('SPA load error:', err);
@@ -725,6 +871,35 @@
             }
         }
 
+        function initAppDatepickers() {
+            if (typeof flatpickr === 'undefined') return;
+            document.querySelectorAll('input[type="date"], input.datepicker').forEach(el => {
+                if (el._flatpickr) return;
+                
+                let initialVal = el.value || '';
+                
+                const fp = flatpickr(el, {
+                    dateFormat: "d-m-Y",
+                    allowInput: true,
+                    altInput: false,
+                    defaultDate: initialVal ? initialVal : null,
+                    parseDate: function(datestr, format) {
+                        if (!datestr) return null;
+                        const parts = datestr.split(/[-/]/);
+                        if (parts.length === 3) {
+                            if (parts[0].length === 4) { // YYYY-MM-DD
+                                return new Date(parts[0], parts[1] - 1, parts[2]);
+                            } else if (parts[2].length === 4) { // DD-MM-YYYY
+                                return new Date(parts[2], parts[1] - 1, parts[0]);
+                            }
+                        }
+                        return new Date(datestr);
+                    }
+                });
+            });
+        }
+        window.initAppDatepickers = initAppDatepickers;
+
         document.addEventListener('DOMContentLoaded', () => {
             document.querySelectorAll('table[data-paginate]').forEach(t => {
                 const size = parseInt(t.getAttribute('data-paginate')) || 10;
@@ -733,6 +908,7 @@
                 }
                 paginateTable(t.id, size);
             });
+            initAppDatepickers();
         });
     </script>
 </body>

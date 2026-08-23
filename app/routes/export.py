@@ -25,7 +25,7 @@ def export_csv(type_str: str):
         txs = TransactionRepository.get_all()
         writer.writerow(['ID', 'Asset', 'Type', 'Raw Type', 'Units', 'Price Per Unit', 'Date', 'Broker', 'Notes'])
         for t in txs:
-            writer.writerow([t['id'], t['asset_name'], t['type'], t['raw_type'], t['units'], t['price_per_unit'], t['date'].strftime('%Y-%m-%d'), t['broker_name'], t['notes']])
+            writer.writerow([t['id'], t['asset_name'], t['type'], t['raw_type'], t['units'], t['price_per_unit'], t['date'].strftime('%d-%m-%Y') if t['date'] else '', t['broker_name'], t['notes']])
         filename = "Portfolio_Transactions.csv"
     else:
         assets = AssetRepository.get_all()

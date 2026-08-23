@@ -198,7 +198,7 @@
             <div class="grid grid-cols-2 gap-3">
                 <div>
                     <label class="block font-semibold text-slate-300 mb-1">Type</label>
-                    <select id="edit_tx_type" name="type" required class="w-full bg-slate-950 border border-slate-800 text-white rounded-xl p-2.5">
+                    <select id="edit_tx_type" name="type" required onchange="handleTxTypeChange(this, 'edit_tx_units_wrap', 'edit_tx_price_label')" class="w-full bg-slate-950 border border-slate-800 text-white rounded-xl p-2.5">
                         <option value="BUY">BUY</option>
                         <option value="SELL">SELL</option>
                         <option value="DIVIDEND">DIVIDEND</option>
@@ -211,12 +211,12 @@
             </div>
 
             <div class="grid grid-cols-2 gap-3">
-                <div>
+                <div id="edit_tx_units_wrap">
                     <label class="block font-semibold text-slate-300 mb-1">Units / Quantity</label>
-                    <input type="number" step="any" id="edit_tx_units" name="units" required class="w-full bg-slate-950 border border-slate-800 text-white rounded-xl p-2.5">
+                    <input type="number" step="any" id="edit_tx_units" name="units" class="w-full bg-slate-950 border border-slate-800 text-white rounded-xl p-2.5">
                 </div>
                 <div>
-                    <label class="block font-semibold text-slate-300 mb-1">Price per Unit / Amount</label>
+                    <label id="edit_tx_price_label" class="block font-semibold text-slate-300 mb-1">Price per Unit / Amount</label>
                     <input type="number" step="any" id="edit_tx_price" name="price_per_unit" required class="w-full bg-slate-950 border border-slate-800 text-white rounded-xl p-2.5">
                 </div>
             </div>
@@ -399,21 +399,22 @@
         if (assetTxs.length === 0) {
             tbody.innerHTML = `<tr><td colspan="7" class="py-8 text-center text-slate-500 italic">No transactions found for this asset in the selected period.</td></tr>`;
         } else {
-            tbody.innerHTML = assetTxs.map(tx => `
+            tbody.innerHTML = assetTxs.map(tx => {
+                const rawU = (tx.raw_type || tx.type || '').toUpperCase();
+                const isIncome = ['DIVIDEND', 'INTEREST', 'INTEREST_PAYOUT', 'BONUS', 'COUPON', 'SURVIVAL_BENEFIT'].includes(rawU) || tx.type === 'DIVIDEND' || tx.type === 'INTEREST';
+                return `
                 <tr onclick="openEditTxModal({id: ${tx.id}, type: '${tx.type}', raw_type: '${tx.raw_type}', date: '${tx.dateStr}', units: ${tx.units}, price_per_unit: ${tx.price}, broker_id: '${tx.broker_id}', notes: '${tx.notes}'})" class="hover:bg-slate-800/40 cursor-pointer transition">
                     <td class="py-3 px-2 font-sans font-semibold text-white">
-                        <span class="px-2 py-0.5 rounded text-[10px] uppercase font-bold ${tx.type === 'BUY' ? 'bg-indigo-950 text-indigo-300 border border-indigo-500/30' : (tx.type === 'SELL' ? 'bg-rose-950 text-rose-300 border border-rose-500/30' : 'bg-amber-950 text-amber-300 border border-amber-500/30')}">
-                            ${tx.raw_type}
-                        </span>
+                        ${getTxBadgeHtml(tx.raw_type, tx.type)}
                     </td>
-                    <td class="py-3 px-2 text-slate-300">${tx.dateStr}</td>
-                    <td class="py-3 px-2 text-right text-slate-300">${tx.units.toFixed(4)}</td>
+                    <td class="py-3 px-2 text-slate-300 font-mono">${formatDateDDMMYYYY(tx.dateStr)}</td>
+                    <td class="py-3 px-2 text-right text-slate-300">${isIncome ? '-' : tx.units.toFixed(4)}</td>
                     <td class="py-3 px-2 text-right text-slate-300">${formatVal(tx.price, tx.currency)}</td>
                     <td class="py-3 px-2 text-right font-bold ${tx.type === 'BUY' ? 'text-indigo-400' : 'text-emerald-400'}">${formatVal(tx.amount_native, tx.currency)}</td>
                     <td class="py-3 px-2 font-sans text-slate-400">${tx.broker_name || '-'}</td>
                     <td class="py-3 px-2 font-sans text-slate-400 max-w-[120px] truncate">${tx.notes || '-'}</td>
                 </tr>
-            `).join('');
+            `;}).join('');
         }
 
         document.getElementById('assetTxModal').classList.remove('hidden');
@@ -781,18 +782,116 @@
         container.innerHTML = html;
     }
 
+    function handleTxTypeChange(selectEl, unitsWrapId, priceLabelId) {
+        if (!selectEl) return;
+        const val = (selectEl.value || '').toUpperCase();
+        const isIncome = ['DIVIDEND', 'INTEREST', 'INTEREST_PAYOUT', 'BONUS', 'COUPON', 'SURVIVAL_BENEFIT'].includes(val);
+        const unitsWrap = document.getElementById(unitsWrapId);
+        const priceLabel = document.getElementById(priceLabelId);
+
+        if (unitsWrap) {
+            if (isIncome) {
+                unitsWrap.classList.add('hidden');
+                const input = unitsWrap.querySelector('input');
+                if (input) input.value = '1.0';
+            } else {
+                unitsWrap.classList.remove('hidden');
+            }
+        }
+
+        if (priceLabel) {
+            priceLabel.textContent = isIncome ? 'Payout Amount' : 'Price per Unit / Amount';
+        }
+    }
+
+    function getTxBadgeHtml(rawType, txType) {
+        const u = (rawType || txType || '').toUpperCase();
+        let icon = 'fa-coins';
+        let badgeClass = 'bg-indigo-950 text-indigo-300 border border-indigo-500/30';
+
+        if (['BUY', 'PURCHASE'].includes(u)) {
+            icon = 'fa-cart-shopping';
+            badgeClass = 'bg-indigo-950 text-indigo-300 border border-indigo-500/30';
+        } else if (['SELL', 'REDEMPTION'].includes(u)) {
+            icon = 'fa-arrow-up-from-bracket';
+            badgeClass = 'bg-rose-950 text-rose-300 border border-rose-500/30';
+        } else if (u.includes('DIVIDEND')) {
+            icon = 'fa-gift';
+            badgeClass = 'bg-amber-950 text-amber-300 border border-amber-500/30';
+        } else if (u.includes('INTEREST')) {
+            icon = 'fa-percent';
+            badgeClass = 'bg-emerald-950 text-emerald-300 border border-emerald-500/30';
+        } else if (['DEPOSIT', 'CONTRIBUTION'].includes(u)) {
+            icon = 'fa-arrow-down';
+            badgeClass = 'bg-emerald-950 text-emerald-300 border border-emerald-500/30';
+        } else if (['WITHDRAWAL'].includes(u)) {
+            icon = 'fa-arrow-up';
+            badgeClass = 'bg-rose-950 text-rose-300 border border-rose-500/30';
+        } else if (['EMPLOYEE_CONTRIBUTION'].includes(u)) {
+            icon = 'fa-user-plus';
+            badgeClass = 'bg-blue-950 text-blue-300 border border-blue-500/30';
+        } else if (['EMPLOYER_CONTRIBUTION'].includes(u)) {
+            icon = 'fa-building';
+            badgeClass = 'bg-purple-950 text-purple-300 border border-purple-500/30';
+        } else if (['PREMIUM'].includes(u)) {
+            icon = 'fa-file-invoice';
+            badgeClass = 'bg-sky-950 text-sky-300 border border-sky-500/30';
+        } else if (['BONUS'].includes(u)) {
+            icon = 'fa-star';
+            badgeClass = 'bg-amber-950 text-amber-300 border border-amber-500/30';
+        } else if (['SURVIVAL_BENEFIT'].includes(u)) {
+            icon = 'fa-shield-heart';
+            badgeClass = 'bg-emerald-950 text-emerald-300 border border-emerald-500/30';
+        } else if (['MATURITY', 'SURRENDER'].includes(u)) {
+            icon = 'fa-flag-checkered';
+            badgeClass = 'bg-indigo-950 text-indigo-300 border border-indigo-500/30';
+        }
+
+        return `<span class="inline-flex items-center space-x-1 px-2 py-0.5 rounded text-[10px] uppercase font-bold ${badgeClass}">
+            <i class="fa-solid ${icon} text-[9px]"></i>
+            <span>${rawType || txType}</span>
+        </span>`;
+    }
+    function formatDateDDMMYYYY(dateStr) {
+        if (!dateStr) return '';
+        const clean = String(dateStr).split('T')[0];
+        const parts = clean.split(/[-/]/);
+        if (parts.length === 3) {
+            if (parts[0].length === 4) {
+                return `${parts[2].padStart(2, '0')}-${parts[1].padStart(2, '0')}-${parts[0]}`;
+            } else if (parts[2].length === 4) {
+                return `${parts[0].padStart(2, '0')}-${parts[1].padStart(2, '0')}-${parts[2]}`;
+            }
+        }
+        return clean;
+    }
+    window.formatDateDDMMYYYY = formatDateDDMMYYYY;
+    window.getTxBadgeHtml = getTxBadgeHtml;
+    window.handleTxTypeChange = handleTxTypeChange;
+
     function openEditTxModal(tx) {
         if (!tx) return;
         document.getElementById('edit_tx_id').value = tx.id;
-        document.getElementById('edit_tx_type').value = tx.type || 'BUY';
-        document.getElementById('edit_tx_date').value = tx.dateStr || '';
+        document.getElementById('edit_tx_type').value = tx.raw_type || tx.type || 'BUY';
+        const formattedDate = formatDateDDMMYYYY(tx.dateStr || tx.date || '');
+        const dateEl = document.getElementById('edit_tx_date');
+        if (dateEl) {
+            if (dateEl._flatpickr) {
+                dateEl._flatpickr.setDate(formattedDate, true, "d-m-Y");
+            } else {
+                dateEl.value = formattedDate;
+            }
+        }
         document.getElementById('edit_tx_units').value = tx.units || 0;
         document.getElementById('edit_tx_price').value = tx.price_per_unit || tx.price || 0;
         document.getElementById('edit_tx_broker_id').value = tx.broker_id || '';
         document.getElementById('edit_tx_notes').value = tx.notes || '';
         
+        handleTxTypeChange(document.getElementById('edit_tx_type'), 'edit_tx_units_wrap', 'edit_tx_price_label');
+        
         document.getElementById('editTxForm').action = '/transactions/edit/' + tx.id;
         document.getElementById('editTxModal').classList.remove('hidden');
+        if (window.initAppDatepickers) window.initAppDatepickers();
     }
 
     async function deleteCurrentTx() {

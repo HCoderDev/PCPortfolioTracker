@@ -62,7 +62,7 @@
                         {% for tx in txs %}
                         <tr class="hover:bg-slate-800/40 transition">
                             <td class="py-3.5 px-4 font-sans font-semibold text-white">
-                                {{ tx.date.strftime('%b %d, %Y') if tx.date else '' }}
+                                {{ tx.date | date_fmt }}
                             </td>
                             <td class="py-3.5 px-4">
                                 <span class="px-2.5 py-0.5 rounded-full font-bold text-[10px] uppercase {% if tx.type == 'BUY' %}bg-indigo-950 text-indigo-300 border border-indigo-500/30{% elif tx.type == 'SELL' %}bg-rose-950 text-rose-300 border border-rose-500/30{% else %}bg-amber-950 text-amber-300 border border-amber-500/30{% endif %}">
@@ -70,10 +70,12 @@
                                 </span>
                             </td>
                             <td class="py-3.5 px-4 text-right text-slate-300 font-sans">
-                                {% if tx.units > 0 %}
+                                {% if tx.type in ['DIVIDEND', 'INTEREST'] or tx.raw_type in ['DIVIDEND', 'INTEREST', 'INTEREST_PAYOUT', 'BONUS'] %}
+                                {{ tx.currency_code }} {{ "%.2f"|format(tx.price_per_unit) }} Payout
+                                {% elif tx.units > 0 and tx.units != 1.0 %}
                                 {{ "%.4f"|format(tx.units) }} @ {{ tx.currency_code }} {{ "%.2f"|format(tx.price_per_unit) }}
                                 {% else %}
-                                —
+                                {{ tx.currency_code }} {{ "%.2f"|format(tx.price_per_unit) }}
                                 {% endif %}
                             </td>
                             <td class="py-3.5 px-4 text-right font-bold text-white">

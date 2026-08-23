@@ -21,7 +21,9 @@ def add_transaction():
     asset_id = int(req_data.get('asset_id'))
     tx_type = req_data.get('type', 'BUY').upper()
     raw_type = req_data.get('raw_type', tx_type).upper()
-    units = float(req_data.get('units', 0.0) or 0.0)
+
+    is_income = tx_type in ['DIVIDEND', 'INTEREST'] or raw_type in ['DIVIDEND', 'INTEREST', 'INTEREST_PAYOUT', 'BONUS', 'COUPON', 'SURVIVAL_BENEFIT']
+    units = 1.0 if is_income else float(req_data.get('units', 0.0) or 0.0)
     price_per_unit = float(req_data.get('price_per_unit', 0.0) or 0.0)
     tx_date = parse_iso_date(req_data.get('date'))
     broker_id = int(req_data.get('broker_id')) if req_data.get('broker_id') else None
@@ -64,7 +66,9 @@ def edit_transaction(tx_id: int):
 
     tx_type = req_data.get('type', tx['type']).upper()
     raw_type = req_data.get('raw_type', tx['raw_type']).upper()
-    units = float(req_data.get('units', tx['units']) or 0.0)
+    
+    is_income = tx_type in ['DIVIDEND', 'INTEREST'] or raw_type in ['DIVIDEND', 'INTEREST', 'INTEREST_PAYOUT', 'BONUS', 'COUPON', 'SURVIVAL_BENEFIT']
+    units = 1.0 if is_income else float(req_data.get('units', tx['units']) or 0.0)
     price_per_unit = float(req_data.get('price_per_unit', tx['price_per_unit']) or 0.0)
     tx_date = parse_iso_date(req_data.get('date')) if req_data.get('date') else tx['date']
     broker_id = int(req_data.get('broker_id')) if req_data.get('broker_id') else tx['broker_id']
